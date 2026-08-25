@@ -31,8 +31,16 @@ const LOCATIONS = [
 async function main() {
   console.log("Seeding demo game...");
 
+  // Fixed, memorable id for local/demo use so admin/projector login is
+  // just ARSH235 / ARSH235 — see ADMIN_PASSPHRASE / PROJECTOR_PASSPHRASE
+  // in .env. Not meant for a real multi-admin production deployment,
+  // see docs/SECURITY.md "Known limitations".
+  const DEMO_GAME_ID = "ARSH235";
+  await prisma.game.deleteMany({ where: { id: DEMO_GAME_ID } });
+
   const game = await prisma.game.create({
     data: {
+      id: DEMO_GAME_ID,
       name: "Nothing Sus — Demo Event",
       config: {
         create: {
@@ -122,7 +130,15 @@ async function main() {
     const player = await PlayersEngine.createPlayer(game.id, { displayName: name }, prisma);
     players.push(player);
   }
-  console.log(`Created ${players.length} players`);
+
+  // Fixed demo player so player login is also ARSH235 / ARSH235 —
+  // participates in normal random role assignment like everyone else,
+  // just with a memorable code instead of a generated one.
+  const demoPlayer = await prisma.player.create({
+    data: { gameId: game.id, playerCode: "ARSH235", displayName: "Arsh" },
+  });
+  players.push(demoPlayer);
+  console.log(`Created ${players.length} players (including demo player ARSH235)`);
 
   await PlayersEngine.assignRoles(game.id, 3, prisma);
   await PlayersEngine.lockRoles(game.id, prisma);
