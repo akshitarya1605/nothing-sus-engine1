@@ -1,0 +1,566 @@
+// Nothing Sus — Game Engine schema
+//
+// Design notes (see docs/GAME_ENGINE.md for the full write-up):
+// - Postgres is the single source of truth. No game rule is enforced by
+//   trusting a value the client sent; every mutation goes through
+//   lib/game/* which re-derives/validates state from this database.
+// - Realtime fan-out rides on Postgres NOTIFY, triggered from the same
+//   transaction that writes a GameEvent row (see lib/game/events).
+// - Role privacy and vote privacy are enforced in the query layer
+//   (lib/game/queries + API route guards), not via Postgres RLS, since
+//   this stack is Prisma + a plain Postgres connection rather than
+//   Supabase. See docs/SECURITY.md for why, and what that trades off.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7: the connection URL lives in prisma.config.ts (for the CLI) and
+// is passed via a driver adapter to the PrismaClient constructor (for the
+// app) — see lib/db/prisma.ts. Nothing here reads DATABASE_URL directly.
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------
+// Game + configuration
+// ---------------------------------------------------------------------
+
+enum GameStatus {
+  SETUP
+  READY
+  LIVE
+  MEETING
+  VOTING
+  REVEAL
+  PAUSED
+  ROUND_COMPLETE
+  FINISHED
+}
+
+enum RoundPhase {
+  ROUND
+  MEETING
+  VOTING
+  REVEAL
+}
+
+model Game {
+  id     String     @id @default(cuid())
+  name   String
+  status GameStatus @default(SETUP)
+
+  currentRoundNumber Int         @default(0)
+  currentPhase       RoundPhase?
+
+  // set when status = PAUSED, so we know what to resume into
+  pausedFromStatus GameStatus?
+  pausedAt         DateTime?
+  pauseReason      String?
+
+  rolesLocked   Boolean   @default(false)
+  rolesLockedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  config       GameConfig?
+  result       GameResult?
+  rounds       Round[]
+  players      Player[]
+  locations    Location[]
+  tasks        Task[]
+  meetings     Meeting[]
+  eliminations Elimination[]
+  abilities    Ability[]
+  events       GameEvent[]
+  auditLogs    AuditLog[]
+}
+
+/// Configurable rules. Never scatter these as magic numbers in code —
+/// every place that needs one of these reads it from here.
+model GameConfig {
+  id     String @id @default(cuid())
+  gameId String @unique
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  totalRounds              Int     @default(4)
+  meetingAfterMinutes      Int     @default(20)
+  imposterCount            Int     @default(0)
+  allowEmergencyMeeting    Boolean @default(true)
+  revealRoleAfterVote      Boolean @default(true)
+  allowImposterElimination Boolean @default(true)
+
+  /// "ENGINEERS_COMPLETE_TASKS" | "IMPOSTERS_REMAIN" | "FINAL_ROUND_RESULT"
+  engineerWinCondition String @default("ENGINEERS_COMPLETE_TASKS")
+  imposterWinCondition String @default("IMPOSTERS_REMAIN")
+
+  /// "NO_ELIMINATION" | "ADMIN_RESOLVES"
+  voteTiePolicy String @default("NO_ELIMINATION")
+
+  updatedAt DateTime @updatedAt
+}
+
+enum GameWinner {
+  ENGINEERS
+  IMPOSTERS
+  NONE
+}
+
+model GameResult {
+  id     String @id @default(cuid())
+  gameId String @unique
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  winner            GameWinner
+  reason            String
+  topScorerPlayerId String?
+  runnerUpPlayerId  String?
+  stats             Json
+
+  finishedAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------
+// Rounds
+// ---------------------------------------------------------------------
+
+enum RoundStatus {
+  SCHEDULED
+  ACTIVE
+  MEETING
+  VOTING
+  REVEAL
+  COMPLETE
+}
+
+model Round {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  number Int
+  name   String
+
+  scheduledStartAt DateTime
+  durationMinutes  Int
+
+  /// null until the round is actually (re)started by the engine
+  startedAt DateTime?
+  endedAt   DateTime?
+
+  /// per-round override; falls back to GameConfig.meetingAfterMinutes
+  meetingAfterMinutes Int?
+
+  status RoundStatus @default(SCHEDULED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks    Task[]
+  meetings Meeting[]
+
+  @@unique([gameId, number])
+  @@index([gameId, status])
+}
+
+// ---------------------------------------------------------------------
+// Locations
+// ---------------------------------------------------------------------
+
+model Location {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  name        String
+  floor       String?
+  building    String?
+  description String?
+  active      Boolean @default(true)
+
+  /// opaque token used in the QR payload (/location/scan/<qrToken>) —
+  /// never the row id, so a photographed QR code can't be used to
+  /// enumerate/guess other location ids.
+  qrToken String @unique @default(cuid())
+
+  createdAt DateTime @default(now())
+
+  tasks          Task[]
+  players        Player[]        @relation("PlayerCurrentLocation")
+  locationEvents LocationEvent[]
+
+  @@index([gameId])
+}
+
+enum LocationEventType {
+  ENTERED
+  EXITED
+}
+
+model LocationEvent {
+  id         String            @id @default(cuid())
+  gameId     String
+  playerId   String
+  locationId String
+  type       LocationEventType
+
+  player   Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([gameId, createdAt])
+  @@index([playerId])
+}
+
+// ---------------------------------------------------------------------
+// Players + roles
+// ---------------------------------------------------------------------
+
+enum PlayerStatus {
+  ALIVE
+  ELIMINATED
+  SPECTATOR
+  DISCONNECTED
+}
+
+enum PlayerRole {
+  ENGINEER
+  IMPOSTER
+}
+
+model Player {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  /// short join code the player authenticates with, e.g. "RED-7F2A"
+  playerCode  String  @unique
+  displayName String
+  email       String?
+  avatarUrl   String?
+  team        String?
+
+  /// null until roles are assigned server-side
+  role   PlayerRole?
+  status PlayerStatus @default(ALIVE)
+
+  currentRoundNumber Int?
+  currentLocationId  String?
+  currentLocation    Location? @relation("PlayerCurrentLocation", fields: [currentLocationId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  playerTasks    PlayerTask[]
+  votesCast      Vote[]          @relation("VoterVotes")
+  votesReceived  Vote[]          @relation("TargetVotes")
+  eliminations   Elimination[]
+  locationEvents LocationEvent[]
+  abilityUses    AbilityUse[]
+  meetingsCalled Meeting[]       @relation("MeetingCalledByPlayer")
+
+  @@index([gameId, status])
+  @@index([gameId, role])
+}
+
+// ---------------------------------------------------------------------
+// Tasks
+// ---------------------------------------------------------------------
+
+enum TaskDifficulty {
+  EASY
+  MEDIUM
+  HARD
+  EXPERT
+}
+
+/// Global availability toggle for the task definition itself — NOT a
+/// player's personal progress (see PlayerTask for that).
+enum TaskStatus {
+  LOCKED
+  AVAILABLE
+  DISABLED
+}
+
+enum CompletionType {
+  MANUAL_CONFIRMATION
+  QUIZ
+  CODE
+  SEQUENCE
+  UPLOAD
+  ADMIN_VERIFICATION
+}
+
+model Task {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  roundId String
+  round   Round  @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String
+
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id])
+
+  difficulty       TaskDifficulty
+  estimatedMinutes Int
+  points           Int
+
+  status TaskStatus @default(LOCKED)
+
+  availableFrom  DateTime?
+  availableUntil DateTime?
+
+  completionType CompletionType @default(MANUAL_CONFIRMATION)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  playerTasks PlayerTask[]
+
+  @@index([gameId, roundId, status])
+}
+
+enum PlayerTaskStatus {
+  LOCKED
+  AVAILABLE
+  IN_PROGRESS
+  COMPLETED
+}
+
+/// A task DEFINITION is global; a PLAYER's completion of it is personal.
+/// Completing a task never mutates Task.status — only this row.
+model PlayerTask {
+  id       String @id @default(cuid())
+  playerId String
+  taskId   String
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  status      PlayerTaskStatus @default(LOCKED)
+  startedAt   DateTime?
+  completedAt DateTime?
+  score       Int?
+  attempts    Int              @default(0)
+
+  verificationData Json?
+
+  @@unique([playerId, taskId])
+  @@index([taskId, status])
+}
+
+// ---------------------------------------------------------------------
+// Meetings + voting
+// ---------------------------------------------------------------------
+
+enum MeetingStatus {
+  SCHEDULED
+  ACTIVE
+  VOTING
+  CLOSED
+  REVEALED
+}
+
+enum MeetingType {
+  SCHEDULED
+  AUTOMATIC
+  ADMIN_CALLED
+  EMERGENCY
+}
+
+model Meeting {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  roundId String
+  round   Round  @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  status MeetingStatus @default(SCHEDULED)
+  type   MeetingType
+
+  startedAt       DateTime?
+  votingStartedAt DateTime?
+  votingEndedAt   DateTime?
+  endedAt         DateTime?
+  reason          String?
+
+  calledById String?
+  calledBy   Player? @relation("MeetingCalledByPlayer", fields: [calledById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  votes        Vote[]
+  eliminations Elimination[]
+
+  @@index([gameId, roundId])
+  @@index([gameId, status])
+}
+
+model Vote {
+  id        String  @id @default(cuid())
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  voterId String
+  voter   Player @relation("VoterVotes", fields: [voterId], references: [id], onDelete: Cascade)
+
+  /// null = explicit "skip vote"
+  targetPlayerId String?
+  target         Player? @relation("TargetVotes", fields: [targetPlayerId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([meetingId, voterId])
+  @@index([meetingId])
+}
+
+enum EliminationMethod {
+  VOTE
+  ADMIN
+  ABILITY
+}
+
+enum RoleRevealStatus {
+  PENDING
+  REVEALED
+}
+
+model Elimination {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  meetingId String?
+  meeting   Meeting? @relation(fields: [meetingId], references: [id])
+
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  method EliminationMethod
+
+  roleRevealStatus RoleRevealStatus @default(PENDING)
+  revealedAt       DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([gameId])
+  @@index([playerId])
+}
+
+// ---------------------------------------------------------------------
+// Imposter abilities (architecture only — disabled until rules are final)
+// ---------------------------------------------------------------------
+
+enum AbilityKey {
+  SABOTAGE
+  ROOM_LOCK
+  TASK_DISRUPTION
+  ELIMINATION
+}
+
+model Ability {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  key             AbilityKey
+  cooldownSeconds Int
+  durationSeconds Int
+  availableRound  Int?
+  enabled         Boolean    @default(false)
+
+  uses AbilityUse[]
+
+  @@unique([gameId, key])
+}
+
+model AbilityUse {
+  id        String  @id @default(cuid())
+  abilityId String
+  ability   Ability @relation(fields: [abilityId], references: [id], onDelete: Cascade)
+
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  targetId String?
+  metadata Json?
+
+  usedAt DateTime @default(now())
+
+  @@index([abilityId, playerId])
+}
+
+// ---------------------------------------------------------------------
+// Realtime events + audit log
+// ---------------------------------------------------------------------
+
+/// PUBLIC: safe for every connected client (players, projector).
+/// ADMIN: admin console only.
+/// PROJECTOR: projector console only (may include reveal-gated data
+///   the public channel doesn't get, but never raw role tables).
+/// PLAYER: only the player named in targetPlayerId (their own role,
+///   their own task state, etc).
+enum EventVisibility {
+  PUBLIC
+  ADMIN
+  PROJECTOR
+  PLAYER
+}
+
+/// The realtime + announcement feed. Every important thing that happens
+/// in the game is a row here first; realtime delivery (Postgres NOTIFY)
+/// is a side effect of the same transaction that inserts the row, and a
+/// client that reconnects can always replay from `sequenceNumber` to
+/// reconcile — realtime is a delivery mechanism, not the source of truth.
+model GameEvent {
+  id             String @id @default(cuid())
+  gameId         String
+  game           Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  sequenceNumber BigInt @default(autoincrement())
+
+  type       String
+  visibility EventVisibility
+
+  /// required when visibility = PLAYER
+  targetPlayerId String?
+
+  payload Json
+
+  createdAt DateTime @default(now())
+
+  @@index([gameId, sequenceNumber])
+  @@index([gameId, visibility, createdAt])
+  @@index([gameId, targetPlayerId])
+}
+
+enum ActorType {
+  ADMIN
+  SYSTEM
+  PLAYER
+}
+
+model AuditLog {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  actorType ActorType
+  actorId   String?
+
+  action     String
+  targetType String?
+  targetId   String?
+  metadata   Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([gameId, createdAt])
+  @@index([gameId, action])
+}
