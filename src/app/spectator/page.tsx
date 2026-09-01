@@ -45,6 +45,11 @@ export default function SpectatorPage() {
   useEffect(() => {
     void refresh();
     setPlayUrl(`${window.location.origin}/play`);
+    // The projector is the always-on room screen — use it as the heartbeat
+    // that drives time-based progression (checkAutoAdvance runs on every
+    // /api/game/state read), so meetings still fire during a quiet round.
+    const beat = setInterval(() => void refresh(), 20_000);
+    return () => clearInterval(beat);
   }, [refresh]);
 
   const onEvent = useCallback(() => void refresh(), [refresh]);
