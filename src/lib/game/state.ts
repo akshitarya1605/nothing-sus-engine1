@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { EventVisibility, MeetingStatus, ParticipantStatus } from "@prisma/client";
+import { prismaInternal } from "../db/prisma";
 import { GameEngineError } from "./errors";
 import { computeGlobalTaskProgress, computeParticipantTaskProgress } from "./scoring";
 import { computeRoundTiming } from "./timers";
@@ -46,6 +47,9 @@ export interface ParticipantGameState {
   ownProgress: { completed: number; inPlay: number; percentage: number };
   ownLocation: { id: string; name: string } | null;
   notifications: Array<{ id: string; type: string; payload: unknown; createdAt: string }>;
+  /** Present only while a meeting is active — the list of players to vote
+   * for, tapped not typed. Names + alive/eliminated only; never role/code. */
+  meetingRoster: Array<{ id: string; name: string; status: string }> | null;
 }
 
 export async function getParticipantGameState(
@@ -62,9 +66,12 @@ export async function getParticipantGameState(
   });
   if (!participant) throw new GameEngineError("NOT_FOUND", "Participant not found");
 
-  const round = participant.currentRoundNumber
+  // The round to show is the game's current round — `Participant.currentRoundNumber`
+  // is never populated by the engine (only the seed touches it).
+  const currentRoundNumber = participant.game.currentRoundNumber || null;
+  const round = currentRoundNumber
     ? await prisma.round.findUnique({
-        where: { gameId_number: { gameId: participant.gameId, number: participant.currentRoundNumber } },
+        where: { gameId_number: { gameId: participant.gameId, number: currentRoundNumber } },
       })
     : null;
 
@@ -72,14 +79,27 @@ export async function getParticipantGameState(
     ? computeRoundTiming(round, participant.game.config?.meetingAfterMinutes ?? 20)
     : null;
 
-  const activeMeeting = round
-    ? await prisma.meeting.findFirst({
-        where: { roundId: round.id, status: { not: MeetingStatus.REVEALED } },
-        orderBy: { createdAt: "desc" },
-      })
-    : null;
+  const activeMeeting = await prisma.meeting.findFirst({
+    where: { gameId: participant.gameId, status: { not: MeetingStatus.REVEALED } },
+    orderBy: { createdAt: "desc" },
+  });
 
   const progress = await computeParticipantTaskProgress(prisma, participantId);
+
+  // Voting roster — only while a meeting is live. Deliberately read through
+  // `prismaInternal` (RLS-bypassing) rather than widening the row policy so
+  // a participant can't `findMany` co-players elsewhere. Selects id/name/
+  // status only — role and code never leave this function.
+  const meetingRoster =
+    activeMeeting != null
+      ? (
+          await prismaInternal.participant.findMany({
+            where: { gameId: participant.gameId },
+            select: { id: true, name: true, status: true },
+            orderBy: { name: "asc" },
+          })
+        ).map((p) => ({ id: p.id, name: p.name, status: p.status }))
+      : null;
 
   const notifications = await prisma.gameEvent.findMany({
     where: {
@@ -123,6 +143,7 @@ export async function getParticipantGameState(
       payload: e.payload,
       createdAt: e.createdAt.toISOString(),
     })),
+    meetingRoster,
   };
 }
 
@@ -327,6 +348,9 @@ export interface ProjectorState {
   meetingState: { status: string; type: string } | null;
   votingState: { isOpen: boolean } | null;
   recentPublicEvents: Array<{ id: string; type: string; payload: unknown; createdAt: string }>;
+  /** The most recent role reveal, for the projector's reveal animation.
+   * Derived from the already-public ROLE_REVEALED event + a name lookup. */
+  eliminationReveal: { participantId: string; name: string; role: "ENGINEER" | "IMPOSTER" } | null;
   finalResult: { winner: string; reason: string; stats: unknown } | null;
 }
 
@@ -368,6 +392,24 @@ export async function getProjectorState(
       prisma.gameResult.findUnique({ where: { gameId } }),
     ]);
 
+  // Latest role reveal (event is already PUBLIC; the name is not on the
+  // payload, so look it up — projector never gets a roster otherwise).
+  const revealEvt = events.find((e) => e.type === "ROLE_REVEALED");
+  const revealPayload = (revealEvt?.payload ?? null) as
+    | { participantId?: string; role?: "ENGINEER" | "IMPOSTER" }
+    | null;
+  const eliminationReveal =
+    revealPayload?.participantId && revealPayload.role
+      ? await prismaInternal.participant
+          .findUnique({
+            where: { id: revealPayload.participantId },
+            select: { id: true, name: true },
+          })
+          .then((p) =>
+            p ? { participantId: p.id, name: p.name, role: revealPayload.role! } : null,
+          )
+      : null;
+
   return {
     round: round
       ? { number: round.number, name: round.name, msRemaining: timing?.roundMsRemaining ?? null }
@@ -386,6 +428,7 @@ export async function getProjectorState(
       payload: e.payload,
       createdAt: e.createdAt.toISOString(),
     })),
+    eliminationReveal,
     finalResult: result
       ? { winner: result.winner, reason: result.reason, stats: result.stats }
       : null,

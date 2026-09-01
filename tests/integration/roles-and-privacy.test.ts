@@ -121,4 +121,26 @@ describe("role and vote privacy in the data contracts", () => {
     expect(serialized).not.toMatch(/ENGINEER|IMPOSTER/);
     expect(state.aliveCount).toBeGreaterThan(0);
   });
+
+  it("participant meetingRoster is null outside a meeting and carries no role/code inside one", async () => {
+    const { game, participants } = await createTestGame(4);
+    cleanupIds.push(game.id);
+    await ParticipantsEngine.assignRoles(game.id, 1, prisma);
+    await ParticipantsEngine.lockRoles(game.id, prisma);
+    await RoundsEngine.markGameReady(game.id, prisma);
+    await RoundsEngine.startRound(game.id, 1, prisma);
+
+    const before = await getParticipantGameState(prisma, participants[0].id);
+    expect(before.meetingRoster).toBeNull();
+
+    const MeetingsEngine = await import("@/lib/game/actions/meetings");
+    const meeting = await MeetingsEngine.callMeeting(game.id, { type: "ADMIN_CALLED" }, prisma);
+    await MeetingsEngine.startVoting(game.id, meeting.id, prisma);
+
+    const during = await getParticipantGameState(prisma, participants[0].id);
+    expect(during.meetingRoster).toHaveLength(4);
+    expect(during.meetingRoster!.every((p) => p.name && p.status)).toBe(true);
+    // never leaks role or code through the roster
+    expect(Object.keys(during.meetingRoster![0])).toEqual(["id", "name", "status"]);
+  });
 });
