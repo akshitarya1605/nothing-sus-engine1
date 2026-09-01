@@ -1,11 +1,11 @@
-import { defineConfig, env } from "prisma/config";
+import { defineConfig } from "prisma/config";
 
 // Prisma 7's CLI runs this file as a plain module and does not load .env
 // on its own, so we do it explicitly before reading DATABASE_URL below.
 try {
   process.loadEnvFile();
 } catch {
-  // no .env file present (e.g. in CI where vars are injected directly)
+  // no .env file present (e.g. in CI / Vercel where vars are injected directly)
 }
 
 // Used by the CLI (migrate, studio, db push, seed). The running app never
@@ -15,11 +15,18 @@ try {
 // Supabase project DATABASE_URL points at the transaction pooler (pgbouncer),
 // which can't run DDL — so prefer DIRECT_URL for the CLI when it's set.
 // Locally only DATABASE_URL exists and this is a no-op.
+// `prisma generate` (which runs in the Vercel build before any env vars are
+// set) loads this file — so fall back to a placeholder rather than throwing.
+// Migrations/studio need a real, NON-pooled connection: on hosted Supabase
+// DATABASE_URL is the pgbouncer pooler (no DDL), so prefer DIRECT_URL.
+const cliUrl =
+  process.env.DIRECT_URL ||
+  process.env.DATABASE_URL ||
+  "postgresql://placeholder:placeholder@localhost:5432/placeholder";
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
-  datasource: {
-    url: process.env.DIRECT_URL ? env("DIRECT_URL") : env("DATABASE_URL"),
-  },
+  datasource: { url: cliUrl },
   migrations: {
     seed: "tsx --env-file=.env prisma/seed.ts",
   },
