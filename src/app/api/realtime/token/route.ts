@@ -18,6 +18,8 @@ export async function GET() {
     if (!session) throw new GameEngineError("UNAUTHENTICATED", "No active session");
 
     const minted = await mintRealtimeToken(session);
-    return NextResponse.json(minted);
+    // gameId is also embedded in the token claims; returned here so the
+    // client can set up its channel filter without a second round-trip.
+    return NextResponse.json({ ...minted, gameId: session.gameId });
   });
 }

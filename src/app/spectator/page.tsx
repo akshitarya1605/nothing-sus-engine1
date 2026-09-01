@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useGameRealtime } from "@/lib/realtime/useGameRealtime";
 
 interface ProjectorState {
   round: { number: number; name: string; msRemaining: number | null } | null;
@@ -24,7 +25,6 @@ interface ProjectorState {
 export default function SpectatorPage() {
   const [state, setState] = useState<ProjectorState | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const cursorRef = useRef("0");
 
   const refresh = useCallback(async () => {
     const res = await fetch("/api/game/state");
@@ -40,14 +40,10 @@ export default function SpectatorPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount; refresh()'s setState calls happen after an await, not synchronously
     void refresh();
-    const source = new EventSource(`/api/realtime?since=${cursorRef.current}`);
-    source.onmessage = (evt) => {
-      const data = JSON.parse(evt.data);
-      cursorRef.current = data.sequenceNumber;
-      void refresh();
-    };
-    return () => source.close();
   }, [refresh]);
+
+  const onRealtimeEvent = useCallback(() => void refresh(), [refresh]);
+  useGameRealtime({ enabled: true, onEvent: onRealtimeEvent });
 
   if (error && !state) {
     return (

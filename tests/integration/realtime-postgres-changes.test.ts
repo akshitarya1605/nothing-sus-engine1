@@ -15,8 +15,8 @@ import { createTestGame, cleanupTestGame } from "./helpers";
  * through a Prisma transaction rather than a websocket).
  */
 
-const SUPABASE_URL = process.env.SUPABASE_URL!;
-const ANON_KEY = process.env.SUPABASE_ANON_KEY!;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 interface Received {
   type: string;

@@ -24,7 +24,6 @@ describe("event visibility table", () => {
 function fakeTx() {
   return {
     gameEvent: { create: vi.fn().mockResolvedValue({}) },
-    $executeRaw: vi.fn().mockResolvedValue(undefined),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }

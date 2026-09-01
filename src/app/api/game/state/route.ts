@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 /**
  * The one snapshot endpoint every client polls (or, more precisely,
  * calls once on mount/reconnect and then again whenever a realtime
- * event tells it something changed — see /api/realtime). It runs the
+ * event tells it something changed — see useGameRealtime). It runs the
  * time-based auto-advance check before reading, so state is always
  * caught up regardless of who else has been connected.
  */

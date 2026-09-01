@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useGameRealtime } from "@/lib/realtime/useGameRealtime";
 
 interface AdminState {
   game: {
@@ -53,7 +54,6 @@ export default function ControlPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [imposterCount, setImposterCount] = useState(3);
-  const cursorRef = useRef("0");
 
   const refresh = useCallback(async () => {
     const res = await fetch("/api/game/state");
@@ -69,14 +69,10 @@ export default function ControlPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount; refresh()'s setState calls happen after an await, not synchronously
     void refresh();
-    const source = new EventSource(`/api/realtime?since=${cursorRef.current}`);
-    source.onmessage = (evt) => {
-      const data = JSON.parse(evt.data);
-      cursorRef.current = data.sequenceNumber;
-      void refresh();
-    };
-    return () => source.close();
   }, [refresh]);
+
+  const onRealtimeEvent = useCallback(() => void refresh(), [refresh]);
+  useGameRealtime({ enabled: true, onEvent: onRealtimeEvent });
 
   async function call(path: string, body?: unknown) {
     const res = await fetch(path, {

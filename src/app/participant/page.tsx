@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useGameRealtime, type GameRealtimeEvent } from "@/lib/realtime/useGameRealtime";
 
 interface ParticipantState {
   identity: { id: string; name: string; code: string };
@@ -37,7 +38,6 @@ export default function ParticipantPage() {
   const [otpFeedback, setOtpFeedback] = useState<Record<string, string>>({});
   const [chat, setChat] = useState<ChatMsg[]>([]);
   const [chatDraft, setChatDraft] = useState("");
-  const cursorRef = useRef("0");
   const meetingIdRef = useRef("");
 
   const refresh = useCallback(async () => {
@@ -72,16 +72,16 @@ export default function ParticipantPage() {
     if (!loggedIn) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount; refresh()'s setState calls happen after an await, not synchronously
     void refresh();
+  }, [loggedIn, refresh]);
 
-    const source = new EventSource(`/api/realtime?since=${cursorRef.current}`);
-    source.onmessage = (evt) => {
-      const data = JSON.parse(evt.data);
-      cursorRef.current = data.sequenceNumber;
+  const onRealtimeEvent = useCallback(
+    (evt: GameRealtimeEvent) => {
       void refresh();
-      if (data.type === "CHAT_MESSAGE_CREATED" && meetingIdRef.current) void refreshChat(meetingIdRef.current);
-    };
-    return () => source.close();
-  }, [loggedIn, refresh, refreshChat]);
+      if (evt.type === "CHAT_MESSAGE_CREATED" && meetingIdRef.current) void refreshChat(meetingIdRef.current);
+    },
+    [refresh, refreshChat],
+  );
+  const { status: realtimeStatus } = useGameRealtime({ enabled: loggedIn, onEvent: onRealtimeEvent });
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- standard fetch-on-mount; refreshChat()'s setState calls happen after an await, not synchronously
@@ -171,7 +171,10 @@ export default function ParticipantPage() {
 
   return (
     <main style={{ padding: 16, fontFamily: "system-ui, sans-serif", maxWidth: 480, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 22 }}>{state?.identity.name}</h1>
+      <h1 style={{ fontSize: 22 }}>
+        {state?.identity.name}{" "}
+        <span style={{ fontSize: 12, opacity: 0.6 }}>· {realtimeStatus}</span>
+      </h1>
       {error && <p style={{ color: "crimson" }}>{error}</p>}
       {state && (
         <>
