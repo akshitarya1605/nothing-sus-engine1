@@ -21,7 +21,9 @@ try {
 // DATABASE_URL is the pgbouncer pooler (no DDL), so prefer DIRECT_URL.
 const cliUrl =
   process.env.DIRECT_URL ||
+  process.env.POSTGRES_URL_NON_POOLING ||
   process.env.DATABASE_URL ||
+  process.env.POSTGRES_PRISMA_URL ||
   "postgresql://placeholder:placeholder@localhost:5432/placeholder";
 
 export default defineConfig({
