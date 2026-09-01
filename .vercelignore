@@ -5,3 +5,9 @@ supabase/.temp
 tests
 docs
 *.log
+
+# Local env files — Vercel injects the real env vars itself. Uploading
+# these would let `next build` bake in localhost URLs.
+.env
+.env.*
+!.env.example
