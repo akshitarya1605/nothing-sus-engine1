@@ -340,6 +340,7 @@ export async function getAdminGameState(
 // ---------------------------------------------------------------------
 
 export interface ProjectorState {
+  status: string;
   round: { number: number; name: string; msRemaining: number | null } | null;
   phase: string | null;
   globalProgress: { completed: number; inPlay: number; percentage: number };
@@ -411,6 +412,7 @@ export async function getProjectorState(
       : null;
 
   return {
+    status: game.status,
     round: round
       ? { number: round.number, name: round.name, msRemaining: timing?.roundMsRemaining ?? null }
       : null,
