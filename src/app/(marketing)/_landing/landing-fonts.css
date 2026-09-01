@@ -1,0 +1,8 @@
+/* The landing CSS expects "Fredoka"/"Nunito" loaded via a <link> (Vite's
+ * index.html). In Next they come from next/font in the root layout, which
+ * exposes them as --font-fredoka / --font-nunito. Re-point the landing's
+ * own font tokens at those, loaded after landing-base.css so this wins. */
+:root {
+  --font-display: var(--font-fredoka), "Fredoka", "Nunito", system-ui, sans-serif;
+  --font-body: var(--font-nunito), "Nunito", system-ui, sans-serif;
+}

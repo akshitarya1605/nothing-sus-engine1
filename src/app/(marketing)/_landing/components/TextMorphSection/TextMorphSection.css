@@ -1,0 +1,80 @@
+.text-morph-pin {
+  position: relative;
+  height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0 1.5rem;
+}
+
+.text-morph-stack {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  height: clamp(10rem, 30vh, 16rem);
+}
+
+.text-morph-line {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  opacity: 0;
+  will-change: transform, opacity, filter;
+}
+
+.text-morph-line h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 8vw, 6rem);
+  line-height: 1.05;
+  color: #fff;
+  -webkit-text-stroke: 3px var(--c-ink);
+  paint-order: stroke fill;
+  text-transform: uppercase;
+}
+
+.text-morph-line.is-red h2 {
+  color: var(--c-red);
+}
+
+.text-morph-line.is-cyan h2 {
+  color: var(--c-cyan);
+}
+
+.text-morph-line.is-yellow h2 {
+  color: var(--c-yellow);
+}
+
+.text-morph-line p {
+  margin: 1rem 0 0;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: clamp(1rem, 2vw, 1.3rem);
+  color: var(--text-dim);
+  max-width: 46ch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-morph-pin {
+    height: auto;
+    flex-direction: column;
+    gap: 3rem;
+    padding: 5rem 1.5rem;
+  }
+  .text-morph-stack {
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+  }
+  .text-morph-line {
+    position: static;
+    opacity: 1;
+  }
+}
