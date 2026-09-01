@@ -1,84 +1,167 @@
-import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { prisma } from "../db/prisma";
+import { generateSecret, hashToken } from "./tokens";
 
 /**
- * Session model. There is deliberately no per-admin user table yet
- * (see docs/SECURITY.md "Known limitations") — ADMIN and PROJECTOR
- * sessions are granted by a shared passphrase from env, and PLAYER
- * sessions are bound to a single playerId. Every server-side check that
- * matters reads this session, never a value the client sent in a body.
+ * Three separate, DB-backed session types — not one JWT covering all
+ * three roles. Each is a real row a request can be checked against and
+ * an admin (or the system) can revoke, which is what makes "force
+ * logout a participant's other device" and "admin session survives a
+ * server restart, revokable on demand" both possible. See
+ * docs/SECURITY.md "Admin access" / "Single device session".
  */
-export type SessionRole = "ADMIN" | "PROJECTOR" | "PLAYER";
 
-export interface SessionPayload {
-  role: SessionRole;
+const PARTICIPANT_COOKIE = "ns_participant";
+const ADMIN_COOKIE = "ns_admin";
+const SPECTATOR_COOKIE = "ns_spectator";
+
+const PARTICIPANT_SESSION_HOURS = 14;
+const ADMIN_SESSION_HOURS = 14;
+const SPECTATOR_SESSION_HOURS = 14;
+
+function expiresInHours(hours: number): Date {
+  return new Date(Date.now() + hours * 60 * 60 * 1000);
+}
+
+// ---------------------------------------------------------------------
+// Participant sessions
+// ---------------------------------------------------------------------
+
+export interface ActiveParticipantSession {
+  participantId: string;
   gameId: string;
-  /** set only when role === "PLAYER" */
-  playerId?: string;
 }
 
-const COOKIE_NAME = "ns_session";
-const SESSION_TTL_SECONDS = 60 * 60 * 14; // 14h — covers a full event day
-
-function getSecretKey(): Uint8Array {
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) throw new Error("AUTH_SECRET is not set");
-  return new TextEncoder().encode(secret);
-}
-
-export async function createSessionToken(payload: SessionPayload): Promise<string> {
-  return new SignJWT({ ...payload })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
-    .sign(getSecretKey());
-}
-
-export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
-  try {
-    const { payload } = await jwtVerify(token, getSecretKey());
-    if (
-      (payload.role === "ADMIN" || payload.role === "PROJECTOR" || payload.role === "PLAYER") &&
-      typeof payload.gameId === "string"
-    ) {
-      return {
-        role: payload.role,
-        gameId: payload.gameId,
-        playerId: typeof payload.playerId === "string" ? payload.playerId : undefined,
-      };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-/** Reads and verifies the session cookie for the current request. Safe
- * to call from Server Components, Route Handlers, and Server Functions
- * (read-only). */
-export async function getSession(): Promise<SessionPayload | null> {
+/** Creates a new session row and sets the cookie. Callers are
+ * responsible for having already checked single-device eligibility —
+ * see lib/game/actions/participants.ts::loginParticipant. */
+export async function createParticipantSession(participantId: string): Promise<void> {
+  const raw = generateSecret();
+  await prisma.participantSession.create({
+    data: {
+      participantId,
+      sessionTokenHash: hashToken(raw),
+      expiresAt: expiresInHours(PARTICIPANT_SESSION_HOURS),
+    },
+  });
   const store = await cookies();
-  const token = store.get(COOKIE_NAME)?.value;
-  if (!token) return null;
-  return verifySessionToken(token);
-}
-
-/** Must be called from a Route Handler or Server Function — see
- * Next.js cookies() docs on why plain Server Components can't set
- * cookies. */
-export async function setSessionCookie(payload: SessionPayload): Promise<void> {
-  const token = await createSessionToken(payload);
-  const store = await cookies();
-  store.set(COOKIE_NAME, token, {
+  store.set(PARTICIPANT_COOKIE, raw, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: SESSION_TTL_SECONDS,
+    maxAge: PARTICIPANT_SESSION_HOURS * 60 * 60,
   });
 }
 
-export async function clearSessionCookie(): Promise<void> {
+export async function getParticipantSession(): Promise<ActiveParticipantSession | null> {
   const store = await cookies();
-  store.delete(COOKIE_NAME);
+  const raw = store.get(PARTICIPANT_COOKIE)?.value;
+  if (!raw) return null;
+
+  const session = await prisma.participantSession.findUnique({
+    where: { sessionTokenHash: hashToken(raw) },
+    include: { participant: { select: { id: true, gameId: true } } },
+  });
+  if (!session || session.revokedAt || session.expiresAt < new Date()) return null;
+
+  // best-effort liveness ping — not on the critical path, never blocks
+  void prisma.participantSession
+    .update({ where: { id: session.id }, data: { lastSeenAt: new Date() } })
+    .catch(() => {});
+
+  return { participantId: session.participant.id, gameId: session.participant.gameId };
+}
+
+export async function clearParticipantSessionCookie(): Promise<void> {
+  const store = await cookies();
+  store.delete(PARTICIPANT_COOKIE);
+}
+
+// ---------------------------------------------------------------------
+// Admin sessions
+// ---------------------------------------------------------------------
+
+export interface ActiveAdminSession {
+  gameId: string;
+}
+
+/** Exchanges a verified admin secret for a session — called only from
+ * the /control/[secret] route handler, never from a form submission. */
+export async function createAdminSession(gameId: string): Promise<void> {
+  const raw = generateSecret();
+  await prisma.adminSession.create({
+    data: { gameId, tokenHash: hashToken(raw), expiresAt: expiresInHours(ADMIN_SESSION_HOURS) },
+  });
+  const store = await cookies();
+  store.set(ADMIN_COOKIE, raw, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: ADMIN_SESSION_HOURS * 60 * 60,
+  });
+}
+
+export async function getAdminSession(): Promise<ActiveAdminSession | null> {
+  const store = await cookies();
+  const raw = store.get(ADMIN_COOKIE)?.value;
+  if (!raw) return null;
+
+  const session = await prisma.adminSession.findUnique({ where: { tokenHash: hashToken(raw) } });
+  if (!session || session.revokedAt || session.expiresAt < new Date()) return null;
+
+  return { gameId: session.gameId };
+}
+
+// ---------------------------------------------------------------------
+// Spectator sessions
+// ---------------------------------------------------------------------
+
+export interface ActiveSpectatorSession {
+  gameId: string;
+}
+
+export async function createSpectatorSession(gameId: string): Promise<void> {
+  const raw = generateSecret();
+  await prisma.spectatorSession.create({
+    data: { gameId, tokenHash: hashToken(raw), expiresAt: expiresInHours(SPECTATOR_SESSION_HOURS) },
+  });
+  const store = await cookies();
+  store.set(SPECTATOR_COOKIE, raw, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: SPECTATOR_SESSION_HOURS * 60 * 60,
+  });
+}
+
+export async function getSpectatorSession(): Promise<ActiveSpectatorSession | null> {
+  const store = await cookies();
+  const raw = store.get(SPECTATOR_COOKIE)?.value;
+  if (!raw) return null;
+
+  const session = await prisma.spectatorSession.findUnique({ where: { tokenHash: hashToken(raw) } });
+  if (!session || session.revokedAt || session.expiresAt < new Date()) return null;
+
+  return { gameId: session.gameId };
+}
+
+/** A single combined check, used by the realtime SSE route which needs
+ * to know "who is this, if anyone" across all three session types
+ * without assuming which one applies. */
+export type AnySession =
+  | { kind: "PARTICIPANT"; participantId: string; gameId: string }
+  | { kind: "ADMIN"; gameId: string }
+  | { kind: "SPECTATOR"; gameId: string };
+
+export async function getAnySession(): Promise<AnySession | null> {
+  const participant = await getParticipantSession();
+  if (participant) return { kind: "PARTICIPANT", ...participant };
+  const admin = await getAdminSession();
+  if (admin) return { kind: "ADMIN", ...admin };
+  const spectator = await getSpectatorSession();
+  if (spectator) return { kind: "SPECTATOR", ...spectator };
+  return null;
 }

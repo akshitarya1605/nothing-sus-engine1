@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { EliminationMethod, PlayerStatus, RoleRevealStatus } from "@prisma/client";
+import { EliminationMethod, ParticipantStatus, RoleRevealStatus } from "@prisma/client";
 import { prisma as defaultPrisma } from "../../db/prisma";
 import { GameEngineError } from "../errors";
 import { writeAuditLog, ActorType } from "../audit";
@@ -11,32 +11,32 @@ type TxClient = Prisma.TransactionClient;
  * The core elimination logic, taking an already-open transaction client
  * so callers that need to do more in the same transaction (voting.ts's
  * revealResult also closes out the meeting) can compose it in rather
- * than nesting a second `$transaction`. Player status, the Elimination
+ * than nesting a second `$transaction`. Participant status, the Elimination
  * row, the audit log entry, and the PLAYER_ELIMINATED event all commit
  * together or not at all.
  */
-export async function eliminatePlayerTx(
+export async function eliminateParticipantTx(
   tx: TxClient,
   gameId: string,
-  input: { playerId: string; meetingId?: string; method: EliminationMethod; actorId: string | null },
+  input: { participantId: string; meetingId?: string; method: EliminationMethod; actorId: string | null },
 ) {
-  const player = await tx.player.findUnique({ where: { id: input.playerId } });
-  if (!player || player.gameId !== gameId) {
-    throw new GameEngineError("NOT_FOUND", "Player not found");
+  const participant = await tx.participant.findUnique({ where: { id: input.participantId } });
+  if (!participant || participant.gameId !== gameId) {
+    throw new GameEngineError("NOT_FOUND", "Participant not found");
   }
-  if (player.status !== PlayerStatus.ALIVE) {
+  if (participant.status !== ParticipantStatus.ALIVE) {
     // idempotency guard — eliminating twice is a no-op conflict, not a
     // second elimination record
-    throw new GameEngineError("CONFLICT", `Player is not ALIVE (status: ${player.status})`);
+    throw new GameEngineError("CONFLICT", `Participant is not ALIVE (status: ${participant.status})`);
   }
 
-  await tx.player.update({ where: { id: player.id }, data: { status: PlayerStatus.ELIMINATED } });
+  await tx.participant.update({ where: { id: participant.id }, data: { status: ParticipantStatus.ELIMINATED } });
 
   const elimination = await tx.elimination.create({
     data: {
       gameId,
       meetingId: input.meetingId,
-      playerId: player.id,
+      participantId: participant.id,
       method: input.method,
       roleRevealStatus: RoleRevealStatus.PENDING,
     },
@@ -46,35 +46,35 @@ export async function eliminatePlayerTx(
     gameId,
     actorType: input.method === EliminationMethod.VOTE ? ActorType.SYSTEM : ActorType.ADMIN,
     actorId: input.actorId,
-    action: "player_eliminated",
-    targetType: "Player",
-    targetId: player.id,
+    action: "participant_eliminated",
+    targetType: "Participant",
+    targetId: participant.id,
     metadata: { method: input.method, meetingId: input.meetingId },
   });
 
   await publishEvent(tx, {
     gameId,
     type: "PLAYER_ELIMINATED",
-    payload: { playerId: player.id, displayName: player.displayName, status: "ELIMINATED" },
+    payload: { participantId: participant.id, name: participant.name, status: "ELIMINATED" },
   });
 
   await publishEvent(tx, {
     gameId,
     type: "ROLE_REVEAL_PENDING",
-    payload: { eliminationId: elimination.id, playerId: player.id },
+    payload: { eliminationId: elimination.id, participantId: participant.id },
   });
 
   return elimination;
 }
 
 /** Standalone entry point for direct admin eliminations (no meeting in
- * play) — opens its own transaction around eliminatePlayerTx. */
-export async function eliminatePlayer(
+ * play) — opens its own transaction around eliminateParticipantTx. */
+export async function eliminateParticipant(
   gameId: string,
-  input: { playerId: string; meetingId?: string; method: EliminationMethod; actorId: string | null },
+  input: { participantId: string; meetingId?: string; method: EliminationMethod; actorId: string | null },
   prisma: PrismaClient = defaultPrisma,
 ) {
-  return prisma.$transaction((tx) => eliminatePlayerTx(tx, gameId, input));
+  return prisma.$transaction((tx) => eliminateParticipantTx(tx, gameId, input));
 }
 
 /** Admin-triggered role reveal — the ONLY place ROLE_REVEALED (which
@@ -87,7 +87,7 @@ export async function revealRole(
   return prisma.$transaction(async (tx) => {
     const elimination = await tx.elimination.findUnique({
       where: { id: eliminationId },
-      include: { player: true },
+      include: { participant: true },
     });
     if (!elimination || elimination.gameId !== gameId) {
       throw new GameEngineError("NOT_FOUND", "Elimination not found");
@@ -95,8 +95,8 @@ export async function revealRole(
     if (elimination.roleRevealStatus !== RoleRevealStatus.PENDING) {
       throw new GameEngineError("CONFLICT", "Role has already been revealed (idempotency guard)");
     }
-    if (!elimination.player.role) {
-      throw new GameEngineError("VALIDATION", "Player has no assigned role to reveal");
+    if (!elimination.participant.role) {
+      throw new GameEngineError("VALIDATION", "Participant has no assigned role to reveal");
     }
 
     await tx.elimination.update({
@@ -109,8 +109,8 @@ export async function revealRole(
       actorType: ActorType.ADMIN,
       actorId: "admin",
       action: "role_revealed",
-      targetType: "Player",
-      targetId: elimination.playerId,
+      targetType: "Participant",
+      targetId: elimination.participantId,
     });
 
     await publishEvent(tx, {
@@ -118,8 +118,8 @@ export async function revealRole(
       type: "ROLE_REVEALED",
       payload: {
         eliminationId,
-        playerId: elimination.playerId,
-        role: elimination.player.role,
+        participantId: elimination.participantId,
+        role: elimination.participant.role,
       },
     });
   });

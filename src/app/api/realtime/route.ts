@@ -1,6 +1,6 @@
 import { EventVisibility } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
-import { getSession } from "@/lib/auth/session";
+import { getAnySession } from "@/lib/auth/session";
 import { getGameEventListener } from "@/lib/realtime/listener";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  * production-deployment caveat on stateless serverless hosts.
  */
 export async function GET(request: Request) {
-  const session = await getSession();
+  const session = await getAnySession();
   if (!session) {
     return new Response("Unauthorized", { status: 401 });
   }
@@ -48,12 +48,16 @@ export async function GET(request: Request) {
             sequenceNumber: { gt: cursor },
             OR: [
               { visibility: EventVisibility.PUBLIC },
-              ...(session.role === "ADMIN" ? [{ visibility: EventVisibility.ADMIN }] : []),
-              ...(session.role === "ADMIN" || session.role === "PROJECTOR"
+              ...(session.kind === "ADMIN" ? [{ visibility: EventVisibility.ADMIN }] : []),
+              ...(session.kind === "ADMIN" || session.kind === "SPECTATOR"
                 ? [{ visibility: EventVisibility.PROJECTOR }]
                 : []),
-              ...(session.role === "PLAYER" && session.playerId
-                ? [{ visibility: EventVisibility.PLAYER, targetPlayerId: session.playerId }]
+              // chat: all participants + admin, never spectator/projector
+              ...(session.kind === "ADMIN" || session.kind === "PARTICIPANT"
+                ? [{ visibility: EventVisibility.MEETING }]
+                : []),
+              ...(session.kind === "PARTICIPANT"
+                ? [{ visibility: EventVisibility.PARTICIPANT, targetParticipantId: session.participantId }]
                 : []),
             ],
           },

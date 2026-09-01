@@ -3,7 +3,7 @@ import { EventVisibility } from "@prisma/client";
 /**
  * Every realtime/announcement event the engine can emit, and exactly
  * what its payload contains. This is the enforcement point for "never
- * send a role or a vote total over a channel a player can subscribe
+ * send a role or a vote total over a channel a participant can subscribe
  * to" — a payload type here simply does not have a `role` field on the
  * PUBLIC-visibility events, so there's nothing to accidentally leak.
  */
@@ -37,7 +37,10 @@ export const GAME_EVENT_TYPES = [
 
   "ANNOUNCEMENT_CREATED",
 
-  // PLAYER-visibility only
+  // MEETING-visibility only (all participants + admin, never spectator)
+  "CHAT_MESSAGE_CREATED",
+
+  // PARTICIPANT-visibility only
   "YOUR_ROLE_ASSIGNED",
 ] as const;
 
@@ -52,20 +55,20 @@ export interface GameEventPayloads {
   ROUND_ENDED: { roundNumber: number };
   ROUND_COMPLETE: { roundNumber: number };
 
-  TASK_STARTED: { playerId: string; taskId: string };
-  TASK_COMPLETED: { playerId: string; taskId: string; globalProgressPercentage: number };
+  TASK_STARTED: { participantId: string; taskId: string };
+  TASK_COMPLETED: { participantId: string; taskId: string; globalProgressPercentage: number };
 
-  PLAYER_JOINED: { playerId: string; displayName: string };
-  PLAYER_ELIMINATED: { playerId: string; displayName: string; status: "ELIMINATED" };
-  PLAYER_RESTORED: { playerId: string; displayName: string; status: "ALIVE" };
-  PLAYER_LOCATION_CHANGED: { playerId: string; locationId: string; locationName: string };
+  PLAYER_JOINED: { participantId: string; name: string };
+  PLAYER_ELIMINATED: { participantId: string; name: string; status: "ELIMINATED" };
+  PLAYER_RESTORED: { participantId: string; name: string; status: "ALIVE" };
+  PLAYER_LOCATION_CHANGED: { participantId: string; locationId: string; locationName: string };
 
   MEETING_STARTED: { meetingId: string; type: string; reason: string | null };
   VOTING_STARTED: { meetingId: string };
   VOTE_CAST: { meetingId: string; voterCount: number };
   VOTING_CLOSED: { meetingId: string };
-  ROLE_REVEAL_PENDING: { eliminationId: string; playerId: string };
-  ROLE_REVEALED: { eliminationId: string; playerId: string; role: "ENGINEER" | "IMPOSTER" };
+  ROLE_REVEAL_PENDING: { eliminationId: string; participantId: string };
+  ROLE_REVEALED: { eliminationId: string; participantId: string; role: "ENGINEER" | "IMPOSTER" };
 
   GAME_PAUSED: { reason: string | null };
   GAME_RESUMED: Record<string, never>;
@@ -73,11 +76,20 @@ export interface GameEventPayloads {
 
   ANNOUNCEMENT_CREATED: { message: string };
 
+  CHAT_MESSAGE_CREATED: {
+    id: string;
+    meetingId: string;
+    senderId: string;
+    senderName: string;
+    message: string;
+    createdAt: string;
+  };
+
   YOUR_ROLE_ASSIGNED: { role: "ENGINEER" | "IMPOSTER" };
 }
 
 /** The default (and, for most types, only legal) visibility. Individual
- * publishes may still narrow further with targetPlayerId — see
+ * publishes may still narrow further with targetParticipantId — see
  * publisher.ts — but must never widen past what's listed here. */
 export const EVENT_VISIBILITY: Record<GameEventType, EventVisibility> = {
   GAME_STARTED: EventVisibility.PUBLIC,
@@ -109,13 +121,15 @@ export const EVENT_VISIBILITY: Record<GameEventType, EventVisibility> = {
 
   ANNOUNCEMENT_CREATED: EventVisibility.PUBLIC,
 
-  YOUR_ROLE_ASSIGNED: EventVisibility.PLAYER,
+  CHAT_MESSAGE_CREATED: EventVisibility.MEETING,
+
+  YOUR_ROLE_ASSIGNED: EventVisibility.PARTICIPANT,
 };
 
 export interface PublishInput<T extends GameEventType> {
   gameId: string;
   type: T;
   payload: GameEventPayloads[T];
-  /** required (and only meaningful) when EVENT_VISIBILITY[type] === PLAYER */
-  targetPlayerId?: string;
+  /** required (and only meaningful) when EVENT_VISIBILITY[type] === PARTICIPANT */
+  targetParticipantId?: string;
 }

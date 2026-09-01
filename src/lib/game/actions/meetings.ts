@@ -13,7 +13,7 @@ export interface CallMeetingInput {
 }
 
 /** Shared by the automatic-meeting tick (rounds.ts) and the admin
- * "call meeting" / player "emergency meeting" entry points. */
+ * "call meeting" / participant "emergency meeting" entry points. */
 export async function callMeeting(
   gameId: string,
   input: CallMeetingInput,
@@ -60,7 +60,7 @@ export async function callMeeting(
 
     await writeAuditLog(tx, {
       gameId,
-      actorType: input.calledById ? ActorType.PLAYER : ActorType.ADMIN,
+      actorType: input.calledById ? ActorType.PARTICIPANT : ActorType.ADMIN,
       actorId: input.calledById ?? "admin",
       action: "meeting_called",
       targetType: "Meeting",

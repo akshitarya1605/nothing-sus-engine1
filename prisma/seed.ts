@@ -1,24 +1,28 @@
 /**
  * Seeds a realistic demo game by driving the actual game engine actions
- * (not hand-crafted rows) — every player, role, task completion, and
- * the pending meeting are produced by the same code paths the real
- * Player/Admin apps will call. If this script succeeds, the engine's
- * core flow (create players -> assign/lock roles -> ready -> start
- * round -> complete tasks -> call meeting) is proven to work end to end.
+ * (not hand-crafted rows) — every participant, role, task completion,
+ * meeting, vote, and elimination is produced by the same code paths the
+ * real Participant/Admin apps call. If this script succeeds, the core
+ * flow is proven to work end to end against real Postgres.
  */
 import { prisma } from "../src/lib/db/prisma";
 import { DEFAULT_ROUND_SCHEDULE } from "../src/lib/game/constants";
-import * as PlayersEngine from "../src/lib/game/actions/players";
+import * as ParticipantsEngine from "../src/lib/game/actions/participants";
+import * as GroupsEngine from "../src/lib/game/actions/groups";
 import * as RoundsEngine from "../src/lib/game/actions/rounds";
 import * as TasksEngine from "../src/lib/game/actions/tasks";
 import * as MeetingsEngine from "../src/lib/game/actions/meetings";
-import { MeetingType, TaskDifficulty, CompletionType } from "@prisma/client";
+import * as VotingEngine from "../src/lib/game/actions/voting";
+import { MeetingType, TaskDifficulty } from "@prisma/client";
 
-const PLAYER_NAMES = [
+const PARTICIPANT_NAMES = [
   "Ava Chen", "Ben Osei", "Carla Rossi", "Devraj Singh", "Ella Nguyen",
   "Farid Khan", "Grace Kim", "Hiro Tanaka", "Ines Alvarez", "Jamal Brooks",
-  "Kira Petrova", "Liam O'Connor",
+  "Kira Petrova", "Liam O'Connor", "Maya Patel", "Noah Fischer", "Omolara Ade",
+  "Priya Sharma", "Quinn Baker", "Rosa Delgado", "Sam Whitfield", "Tariq Malik",
 ];
+
+const GROUP_NAMES = ["Engineering", "Design", "Marketing"];
 
 const LOCATIONS = [
   { name: "LHC 202", floor: "2", building: "Learning Hub Center" },
@@ -28,13 +32,22 @@ const LOCATIONS = [
   { name: "LHC 211", floor: "2", building: "Learning Hub Center" },
 ];
 
+const TASK_DEFS = [
+  { title: "Recalibrate the router", difficulty: TaskDifficulty.EASY, points: 10, minutes: 5 },
+  { title: "Decode the whiteboard cipher", difficulty: TaskDifficulty.MEDIUM, points: 20, minutes: 10 },
+  { title: "Restore the backup server", difficulty: TaskDifficulty.HARD, points: 35, minutes: 15 },
+  { title: "Patch the security log", difficulty: TaskDifficulty.MEDIUM, points: 20, minutes: 10 },
+  { title: "Align the projector array", difficulty: TaskDifficulty.EASY, points: 10, minutes: 5 },
+  { title: "Rewire the badge scanner", difficulty: TaskDifficulty.EXPERT, points: 50, minutes: 20 },
+];
+
 async function main() {
   console.log("Seeding demo game...");
 
-  // Fixed, memorable id for local/demo use so admin/projector login is
-  // just ARSH235 / ARSH235 — see ADMIN_PASSPHRASE / PROJECTOR_PASSPHRASE
-  // in .env. Not meant for a real multi-admin production deployment,
-  // see docs/SECURITY.md "Known limitations".
+  // Fixed, memorable id + admin/spectator secrets for local/demo use —
+  // /control/ARSH235 and /spectator/ARSH235 log straight in, and
+  // participant code ARSH235 logs in as a regular participant too. Not
+  // meant for a real production deployment — see docs/SECURITY.md.
   const DEMO_GAME_ID = "ARSH235";
   await prisma.game.deleteMany({ where: { id: DEMO_GAME_ID } });
 
@@ -42,6 +55,8 @@ async function main() {
     data: {
       id: DEMO_GAME_ID,
       name: "Nothing Sus — Demo Event",
+      adminSecret: "ARSH235",
+      spectatorSecret: "ARSH235",
       config: {
         create: {
           totalRounds: DEFAULT_ROUND_SCHEDULE.length,
@@ -54,6 +69,8 @@ async function main() {
     },
   });
   console.log("Game:", game.id);
+
+  const groups = await Promise.all(GROUP_NAMES.map((name) => GroupsEngine.createGroup(game.id, name, prisma)));
 
   const locations = await Promise.all(
     LOCATIONS.map((loc) => prisma.location.create({ data: { gameId: game.id, ...loc } })),
@@ -76,104 +93,108 @@ async function main() {
     }),
   );
 
-  const taskDefs = [
-    { name: "Recalibrate the router", difficulty: TaskDifficulty.EASY, points: 10, minutes: 5 },
-    { name: "Decode the whiteboard cipher", difficulty: TaskDifficulty.MEDIUM, points: 20, minutes: 10 },
-    { name: "Restore the backup server", difficulty: TaskDifficulty.HARD, points: 35, minutes: 15 },
-    { name: "Patch the security log", difficulty: TaskDifficulty.MEDIUM, points: 20, minutes: 10 },
-    { name: "Align the projector array", difficulty: TaskDifficulty.EASY, points: 10, minutes: 5 },
-  ];
-
-  const round1Tasks = await Promise.all(
-    taskDefs.map((t, i) =>
-      prisma.task.create({
-        data: {
-          gameId: game.id,
-          roundId: rounds[0].id,
-          name: t.name,
-          description: `Round 1 task: ${t.name}.`,
+  // 20+ tasks spread across all 4 rounds, some group-restricted, some
+  // open to everyone. Print the first few OTPs so the demo is usable
+  // without querying the DB by hand.
+  const createdTasks: Array<{ taskId: string; otp: string; title: string }> = [];
+  for (const round of rounds) {
+    for (let i = 0; i < TASK_DEFS.length; i++) {
+      const def = TASK_DEFS[i];
+      const groupId = i % 3 === 0 ? groups[i % groups.length].id : null; // ~1/3 group-restricted
+      const result = await TasksEngine.createTask(
+        game.id,
+        {
+          roundId: round.id,
+          groupId,
+          title: def.title,
+          description: `${round.name} task: ${def.title}.`,
           locationId: locations[i % locations.length].id,
-          difficulty: t.difficulty,
-          estimatedMinutes: t.minutes,
-          points: t.points,
-          status: "AVAILABLE",
-          completionType: CompletionType.MANUAL_CONFIRMATION,
+          difficulty: def.difficulty,
+          estimatedMinutes: def.minutes,
+          points: def.points,
         },
-      }),
-    ),
-  );
+        prisma,
+      );
+      createdTasks.push({ ...result, title: def.title });
+    }
+  }
+  console.log(`Created ${createdTasks.length} tasks across ${rounds.length} rounds`);
 
-  // remaining rounds get a lighter task set so the demo isn't enormous
-  for (const round of rounds.slice(1)) {
-    await Promise.all(
-      taskDefs.slice(0, 3).map((t, i) =>
-        prisma.task.create({
-          data: {
-            gameId: game.id,
-            roundId: round.id,
-            name: t.name,
-            description: `${round.name} task: ${t.name}.`,
-            locationId: locations[i % locations.length].id,
-            difficulty: t.difficulty,
-            estimatedMinutes: t.minutes,
-            points: t.points,
-            status: "AVAILABLE",
-            completionType: CompletionType.MANUAL_CONFIRMATION,
-          },
-        }),
-      ),
+  const participants = [];
+  for (let i = 0; i < PARTICIPANT_NAMES.length; i++) {
+    const participant = await ParticipantsEngine.createParticipant(
+      game.id,
+      { name: PARTICIPANT_NAMES[i], groupId: groups[i % groups.length].id },
+      prisma,
     );
+    participants.push(participant);
   }
 
-  const players = [];
-  for (const name of PLAYER_NAMES) {
-    const player = await PlayersEngine.createPlayer(game.id, { displayName: name }, prisma);
-    players.push(player);
-  }
-
-  // Fixed demo player so player login is also ARSH235 / ARSH235 —
-  // participates in normal random role assignment like everyone else,
-  // just with a memorable code instead of a generated one.
-  const demoPlayer = await prisma.player.create({
-    data: { gameId: game.id, playerCode: "ARSH235", displayName: "Arsh" },
+  // Fixed demo participant, in no group, so a "just try it" login is
+  // also ARSH235 / ARSH235.
+  const demoParticipant = await prisma.participant.create({
+    data: { gameId: game.id, code: "ARSH235", name: "Arsh" },
   });
-  players.push(demoPlayer);
-  console.log(`Created ${players.length} players (including demo player ARSH235)`);
+  participants.push(demoParticipant);
+  console.log(`Created ${participants.length} participants across ${groups.length} groups`);
 
-  await PlayersEngine.assignRoles(game.id, 3, prisma);
-  await PlayersEngine.lockRoles(game.id, prisma);
-  console.log("Roles assigned and locked");
+  await ParticipantsEngine.assignRoles(game.id, 4, prisma);
+  await ParticipantsEngine.lockRoles(game.id, prisma);
+  console.log("Roles assigned and locked (4 imposters)");
 
   await RoundsEngine.markGameReady(game.id, prisma);
   await RoundsEngine.startRound(game.id, 1, prisma);
   console.log("Round 1 started");
 
-  // a handful of players make progress on round 1 tasks
-  const active = await prisma.player.findMany({ where: { gameId: game.id }, orderBy: { displayName: "asc" } });
-  await prisma.player.updateMany({ where: { gameId: game.id }, data: { currentRoundNumber: 1 } });
+  await prisma.participant.updateMany({ where: { gameId: game.id }, data: { currentRoundNumber: 1 } });
 
-  for (const player of active.slice(0, 5)) {
-    const task = round1Tasks[active.indexOf(player) % round1Tasks.length];
-    await TasksEngine.startTask(player.id, task.id, prisma);
-    if (active.indexOf(player) % 2 === 0) {
-      await TasksEngine.completeTask(player.id, task.id, { confirmedBy: "seed-script" }, prisma);
+  // a handful of participants make progress on round 1 tasks, using the
+  // real OTP flow (right answers only, to keep the seed deterministic)
+  const round1Tasks = createdTasks.slice(0, TASK_DEFS.length);
+  const active = await prisma.participant.findMany({ where: { gameId: game.id }, orderBy: { name: "asc" } });
+  for (let i = 0; i < 8; i++) {
+    const participant = active[i];
+    const task = round1Tasks[i % round1Tasks.length];
+    await TasksEngine.startTask(participant.id, task.taskId, prisma).catch(() => {
+      // group-restricted task this participant isn't eligible for — skip
+    });
+    if (i % 2 === 0) {
+      await TasksEngine.submitTaskOtp(participant.id, task.taskId, task.otp, prisma).catch(() => {});
     }
   }
   console.log("Seeded task progress");
 
-  await MeetingsEngine.callMeeting(
+  // a full meeting -> voting -> elimination cycle so the demo shows the
+  // whole pipeline, not just a pending call
+  const meeting = await MeetingsEngine.callMeeting(
     game.id,
     { type: MeetingType.ADMIN_CALLED, reason: "Suspicious activity reported near LHC 210" },
     prisma,
   );
-  console.log("Pending meeting created (not yet in voting)");
+  await MeetingsEngine.startVoting(game.id, meeting.id, prisma);
+
+  const alive = active.filter((p) => p.id !== active[0].id).slice(0, 6);
+  const target = active[1];
+  for (const voter of alive) {
+    if (voter.id === target.id) continue;
+    await VotingEngine.castVote(game.id, voter.id, { meetingId: meeting.id, targetParticipantId: target.id }, prisma).catch(
+      () => {},
+    );
+  }
+  console.log("Sample votes cast (voting left open for the demo — admin can close it)");
 
   console.log("\nDone.\n");
   console.log(`Game ID: ${game.id}`);
-  console.log(`Admin login: POST /api/auth/admin-login { gameId: "${game.id}", role: "ADMIN", passphrase: <ADMIN_PASSPHRASE> }`);
-  console.log(`Sample player codes:`);
-  for (const p of players.slice(0, 3)) {
-    console.log(`  ${p.displayName}: ${p.playerCode}`);
+  console.log(`Admin:      /control/${game.adminSecret ?? "ARSH235"}`);
+  console.log(`Spectator:  /spectator/ARSH235`);
+  console.log(`Participant login: code ARSH235 (or any of the ${participants.length - 1} generated codes below)`);
+  console.log(`Sample participant codes:`);
+  for (const p of participants.slice(0, 4)) {
+    console.log(`  ${p.name}: ${p.code}`);
+  }
+  console.log(`Sample task OTPs:`);
+  for (const t of createdTasks.slice(0, 4)) {
+    console.log(`  ${t.title}: ${t.otp}`);
   }
 }
 

@@ -7,7 +7,7 @@ export interface AuditInput {
   gameId: string;
   actorType: ActorType;
   /** admin: "admin" (no per-admin accounts yet, see docs/SECURITY.md);
-   * player: the player's id; system: null. */
+   * participant: the participant's id; system: null. */
   actorId: string | null;
   action: string;
   targetType?: string;
@@ -16,9 +16,9 @@ export interface AuditInput {
 }
 
 /** Every privileged mutation writes exactly one of these in the same
- * transaction as the change itself. Players cannot write or modify
+ * transaction as the change itself. Participants cannot write or modify
  * this table — there is no route that exposes AuditLog writes to a
- * PLAYER session. */
+ * PARTICIPANT session. */
 export async function writeAuditLog(tx: TxClient, input: AuditInput): Promise<void> {
   await tx.auditLog.create({
     data: {

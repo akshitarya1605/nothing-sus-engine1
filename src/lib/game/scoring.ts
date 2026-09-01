@@ -1,31 +1,31 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { PlayerTaskStatus } from "@prisma/client";
+import { ParticipantTaskStatus } from "@prisma/client";
 
 /** Accepts either the top-level client or an active transaction client
- * — both expose the same `.playerTask` query methods used here. */
+ * — both expose the same `.participantTask` query methods used here. */
 type Queryable = PrismaClient | Prisma.TransactionClient;
 
 /**
  * Task progress — ONE definition, used by every caller (admin dashboard,
- * projector, player view). Nothing else in the codebase should compute
+ * projector, participant view). Nothing else in the codebase should compute
  * a percentage independently.
  *
- * Global progress = completed PlayerTask instances
+ * Global progress = completed ParticipantTask instances
  *                    ÷
- *                    PlayerTask instances that are AVAILABLE, IN_PROGRESS,
+ *                    ParticipantTask instances that are AVAILABLE, IN_PROGRESS,
  *                    or COMPLETED (i.e. everything that has been unlocked
- *                    for at least one player — LOCKED instances aren't in
+ *                    for at least one participant — LOCKED instances aren't in
  *                    play yet and don't belong in either side of the
  *                    ratio).
  *
- * Player progress uses the same rule, scoped to that player's own
- * PlayerTask rows.
+ * Participant progress uses the same rule, scoped to that participant's own
+ * ParticipantTask rows.
  */
 
 const IN_PLAY_STATUSES = [
-  PlayerTaskStatus.AVAILABLE,
-  PlayerTaskStatus.IN_PROGRESS,
-  PlayerTaskStatus.COMPLETED,
+  ParticipantTaskStatus.AVAILABLE,
+  ParticipantTaskStatus.IN_PROGRESS,
+  ParticipantTaskStatus.COMPLETED,
 ] as const;
 
 export interface TaskProgress {
@@ -47,26 +47,26 @@ export async function computeGlobalTaskProgress(
   gameId: string,
 ): Promise<TaskProgress> {
   const [completed, inPlay] = await Promise.all([
-    prisma.playerTask.count({
-      where: { status: PlayerTaskStatus.COMPLETED, task: { gameId } },
+    prisma.participantTask.count({
+      where: { status: ParticipantTaskStatus.COMPLETED, task: { gameId } },
     }),
-    prisma.playerTask.count({
+    prisma.participantTask.count({
       where: { status: { in: [...IN_PLAY_STATUSES] }, task: { gameId } },
     }),
   ]);
   return toProgress(completed, inPlay);
 }
 
-export async function computePlayerTaskProgress(
+export async function computeParticipantTaskProgress(
   prisma: Queryable,
-  playerId: string,
+  participantId: string,
 ): Promise<TaskProgress> {
   const [completed, inPlay] = await Promise.all([
-    prisma.playerTask.count({
-      where: { playerId, status: PlayerTaskStatus.COMPLETED },
+    prisma.participantTask.count({
+      where: { participantId, status: ParticipantTaskStatus.COMPLETED },
     }),
-    prisma.playerTask.count({
-      where: { playerId, status: { in: [...IN_PLAY_STATUSES] } },
+    prisma.participantTask.count({
+      where: { participantId, status: { in: [...IN_PLAY_STATUSES] } },
     }),
   ]);
   return toProgress(completed, inPlay);

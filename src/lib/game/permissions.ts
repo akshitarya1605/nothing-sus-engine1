@@ -1,5 +1,5 @@
-import type { Game, Player, Round } from "@prisma/client";
-import { GameStatus, PlayerStatus } from "@prisma/client";
+import type { Game, Participant, Round } from "@prisma/client";
+import { GameStatus, ParticipantStatus } from "@prisma/client";
 import { GameEngineError } from "./errors";
 
 /** Small, composable guards used by lib/game/actions/*. Each one throws
@@ -15,15 +15,15 @@ export function assertGameStatus(game: Pick<Game, "status">, allowed: GameStatus
   }
 }
 
-export function assertPlayerAlive(player: Pick<Player, "status">): void {
-  if (player.status !== PlayerStatus.ALIVE) {
-    throw new GameEngineError("FORBIDDEN", `Player is not ALIVE (status: ${player.status})`);
+export function assertParticipantAlive(participant: Pick<Participant, "status">): void {
+  if (participant.status !== ParticipantStatus.ALIVE) {
+    throw new GameEngineError("FORBIDDEN", `Participant is not ALIVE (status: ${participant.status})`);
   }
 }
 
-export function assertPlayerInGame(player: Pick<Player, "gameId">, gameId: string): void {
-  if (player.gameId !== gameId) {
-    throw new GameEngineError("FORBIDDEN", "Player does not belong to this game");
+export function assertParticipantInGame(participant: Pick<Participant, "gameId">, gameId: string): void {
+  if (participant.gameId !== gameId) {
+    throw new GameEngineError("FORBIDDEN", "Participant does not belong to this game");
   }
 }
 

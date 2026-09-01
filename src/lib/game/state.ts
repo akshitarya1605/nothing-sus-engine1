@@ -1,22 +1,32 @@
-import type { PrismaClient } from "@prisma/client";
-import { EventVisibility, MeetingStatus, PlayerStatus } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
+import { EventVisibility, MeetingStatus, ParticipantStatus } from "@prisma/client";
 import { GameEngineError } from "./errors";
-import { computeGlobalTaskProgress, computePlayerTaskProgress } from "./scoring";
+import { computeGlobalTaskProgress, computeParticipantTaskProgress } from "./scoring";
 import { computeRoundTiming } from "./timers";
+
+/**
+ * These read functions accept either the raw client or an active
+ * transaction client. Milestone 1 introduced `withAudienceContext`
+ * (src/lib/db/rlsContext.ts), which runs them inside a transaction whose
+ * connection has been downgraded to the `authenticated` role so the RLS
+ * backstop is exercised — the signature widening is what lets that
+ * transaction client be threaded straight through.
+ */
+type Queryable = PrismaClient | Prisma.TransactionClient;
 
 /**
  * The three data contracts from the brief. Each is the ONLY way its
  * respective client is allowed to read game state — nobody queries
- * `prisma.player.findMany()` directly from a route handler. If a field
+ * `prisma.participant.findMany()` directly from a route handler. If a field
  * isn't returned here, that audience never sees it.
  */
 
 // ---------------------------------------------------------------------
-// Player
+// Participant
 // ---------------------------------------------------------------------
 
-export interface PlayerGameState {
-  identity: { id: string; displayName: string; playerCode: string };
+export interface ParticipantGameState {
+  identity: { id: string; name: string; code: string };
   ownRole: "ENGINEER" | "IMPOSTER" | null;
   ownStatus: string;
   game: { status: string; currentRoundNumber: number; currentPhase: string | null };
@@ -28,7 +38,7 @@ export interface PlayerGameState {
   meetingStatus: string | null;
   ownTasks: Array<{
     taskId: string;
-    name: string;
+    title: string;
     difficulty: string;
     points: number;
     status: string;
@@ -38,28 +48,28 @@ export interface PlayerGameState {
   notifications: Array<{ id: string; type: string; payload: unknown; createdAt: string }>;
 }
 
-export async function getPlayerGameState(
-  prisma: PrismaClient,
-  playerId: string,
-): Promise<PlayerGameState> {
-  const player = await prisma.player.findUnique({
-    where: { id: playerId },
+export async function getParticipantGameState(
+  prisma: Queryable,
+  participantId: string,
+): Promise<ParticipantGameState> {
+  const participant = await prisma.participant.findUnique({
+    where: { id: participantId },
     include: {
       game: { include: { config: true } },
       currentLocation: true,
-      playerTasks: { include: { task: true } },
+      participantTasks: { include: { task: true } },
     },
   });
-  if (!player) throw new GameEngineError("NOT_FOUND", "Player not found");
+  if (!participant) throw new GameEngineError("NOT_FOUND", "Participant not found");
 
-  const round = player.currentRoundNumber
+  const round = participant.currentRoundNumber
     ? await prisma.round.findUnique({
-        where: { gameId_number: { gameId: player.gameId, number: player.currentRoundNumber } },
+        where: { gameId_number: { gameId: participant.gameId, number: participant.currentRoundNumber } },
       })
     : null;
 
   const timing = round
-    ? computeRoundTiming(round, player.game.config?.meetingAfterMinutes ?? 20)
+    ? computeRoundTiming(round, participant.game.config?.meetingAfterMinutes ?? 20)
     : null;
 
   const activeMeeting = round
@@ -69,14 +79,14 @@ export async function getPlayerGameState(
       })
     : null;
 
-  const progress = await computePlayerTaskProgress(prisma, playerId);
+  const progress = await computeParticipantTaskProgress(prisma, participantId);
 
   const notifications = await prisma.gameEvent.findMany({
     where: {
-      gameId: player.gameId,
+      gameId: participant.gameId,
       OR: [
         { visibility: EventVisibility.PUBLIC },
-        { visibility: EventVisibility.PLAYER, targetPlayerId: playerId },
+        { visibility: EventVisibility.PARTICIPANT, targetParticipantId: participantId },
       ],
     },
     orderBy: { sequenceNumber: "desc" },
@@ -84,28 +94,28 @@ export async function getPlayerGameState(
   });
 
   return {
-    identity: { id: player.id, displayName: player.displayName, playerCode: player.playerCode },
-    ownRole: player.role,
-    ownStatus: player.status,
+    identity: { id: participant.id, name: participant.name, code: participant.code },
+    ownRole: participant.role,
+    ownStatus: participant.status,
     game: {
-      status: player.game.status,
-      currentRoundNumber: player.game.currentRoundNumber,
-      currentPhase: player.game.currentPhase,
+      status: participant.game.status,
+      currentRoundNumber: participant.game.currentRoundNumber,
+      currentPhase: participant.game.currentPhase,
     },
     round: round
       ? { number: round.number, name: round.name, msRemaining: timing?.roundMsRemaining ?? null }
       : null,
     meetingStatus: activeMeeting?.status ?? null,
-    ownTasks: player.playerTasks.map((pt) => ({
+    ownTasks: participant.participantTasks.map((pt) => ({
       taskId: pt.taskId,
-      name: pt.task.name,
+      title: pt.task.title,
       difficulty: pt.task.difficulty,
       points: pt.task.points,
       status: pt.status,
     })),
     ownProgress: progress,
-    ownLocation: player.currentLocation
-      ? { id: player.currentLocation.id, name: player.currentLocation.name }
+    ownLocation: participant.currentLocation
+      ? { id: participant.currentLocation.id, name: participant.currentLocation.name }
       : null,
     notifications: notifications.map((e) => ({
       id: e.id,
@@ -129,16 +139,38 @@ export interface AdminGameState {
     rolesLocked: boolean;
     pausedFromStatus: string | null;
     pauseReason: string | null;
+    adminSecret: string;
+    spectatorSecret: string;
   };
   config: unknown;
-  rounds: Array<{ number: number; name: string; status: string; startedAt: string | null }>;
-  players: Array<{
+  rounds: Array<{ id: string; number: number; name: string; status: string; startedAt: string | null }>;
+  groups: Array<{
     id: string;
-    displayName: string;
-    playerCode: string;
+    name: string;
+    participantCount: number;
+    taskProgress: { completed: number; inPlay: number; percentage: number };
+  }>;
+  participants: Array<{
+    id: string;
+    name: string;
+    code: string;
     role: string | null;
     status: string;
+    groupId: string | null;
+    groupName: string | null;
     currentRoundNumber: number | null;
+  }>;
+  tasks: Array<{
+    id: string;
+    title: string;
+    roundNumber: number;
+    groupId: string | null;
+    groupName: string | null;
+    difficulty: string;
+    points: number;
+    status: string;
+    completedCount: number;
+    attemptCount: number;
   }>;
   taskProgress: { completed: number; inPlay: number; percentage: number };
   activeMeeting: {
@@ -158,15 +190,26 @@ export interface AdminGameState {
 }
 
 export async function getAdminGameState(
-  prisma: PrismaClient,
+  prisma: Queryable,
   gameId: string,
 ): Promise<AdminGameState> {
   const game = await prisma.game.findUnique({ where: { id: gameId }, include: { config: true } });
   if (!game) throw new GameEngineError("NOT_FOUND", "Game not found");
 
-  const [rounds, players, taskProgress, activeMeeting, auditLog] = await Promise.all([
+  const [rounds, groups, participants, tasks, taskProgress, activeMeeting, auditLog] = await Promise.all([
     prisma.round.findMany({ where: { gameId }, orderBy: { number: "asc" } }),
-    prisma.player.findMany({ where: { gameId }, orderBy: { displayName: "asc" } }),
+    prisma.group.findMany({ where: { gameId }, orderBy: { name: "asc" } }),
+    prisma.participant.findMany({ where: { gameId }, orderBy: { name: "asc" }, include: { group: true } }),
+    prisma.task.findMany({
+      where: { gameId },
+      orderBy: { createdAt: "asc" },
+      include: {
+        round: true,
+        group: true,
+        participantTasks: { select: { status: true } },
+        taskAttempts: { select: { id: true } },
+      },
+    }),
     computeGlobalTaskProgress(prisma, gameId),
     prisma.meeting.findFirst({
       where: { gameId, status: { not: MeetingStatus.REVEALED } },
@@ -177,8 +220,36 @@ export async function getAdminGameState(
   ]);
 
   const aliveVoterCount = activeMeeting
-    ? await prisma.player.count({ where: { gameId, status: PlayerStatus.ALIVE } })
+    ? await prisma.participant.count({ where: { gameId, status: ParticipantStatus.ALIVE } })
     : 0;
+
+  const groupProgress = await Promise.all(
+    groups.map(async (g) => {
+      const [completed, inPlay, participantCount] = await Promise.all([
+        prisma.participantTask.count({
+          where: { status: "COMPLETED", task: { gameId }, participant: { groupId: g.id } },
+        }),
+        prisma.participantTask.count({
+          where: {
+            status: { in: ["AVAILABLE", "IN_PROGRESS", "COMPLETED"] },
+            task: { gameId },
+            participant: { groupId: g.id },
+          },
+        }),
+        prisma.participant.count({ where: { gameId, groupId: g.id } }),
+      ]);
+      return {
+        id: g.id,
+        name: g.name,
+        participantCount,
+        taskProgress: {
+          completed,
+          inPlay,
+          percentage: inPlay === 0 ? 0 : Math.round((completed / inPlay) * 1000) / 10,
+        },
+      };
+    }),
+  );
 
   return {
     game: {
@@ -189,21 +260,39 @@ export async function getAdminGameState(
       rolesLocked: game.rolesLocked,
       pausedFromStatus: game.pausedFromStatus,
       pauseReason: game.pauseReason,
+      adminSecret: game.adminSecret,
+      spectatorSecret: game.spectatorSecret,
     },
     config: game.config,
     rounds: rounds.map((r) => ({
+      id: r.id,
       number: r.number,
       name: r.name,
       status: r.status,
       startedAt: r.startedAt?.toISOString() ?? null,
     })),
-    players: players.map((p) => ({
+    groups: groupProgress,
+    participants: participants.map((p) => ({
       id: p.id,
-      displayName: p.displayName,
-      playerCode: p.playerCode,
+      name: p.name,
+      code: p.code,
       role: p.role,
       status: p.status,
+      groupId: p.groupId,
+      groupName: p.group?.name ?? null,
       currentRoundNumber: p.currentRoundNumber,
+    })),
+    tasks: tasks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      roundNumber: t.round.number,
+      groupId: t.groupId,
+      groupName: t.group?.name ?? null,
+      difficulty: t.difficulty,
+      points: t.points,
+      status: t.status,
+      completedCount: t.participantTasks.filter((pt) => pt.status === "COMPLETED").length,
+      attemptCount: t.taskAttempts.length,
     })),
     taskProgress,
     activeMeeting: activeMeeting
@@ -241,12 +330,12 @@ export interface ProjectorState {
   finalResult: { winner: string; reason: string; stats: unknown } | null;
 }
 
-/** The projector never touches Player, Vote, or role tables directly —
+/** The projector never touches Participant, Vote, or role tables directly —
  * only aggregate counts (by status, never by role) and the PUBLIC event
- * feed. Reveal-gated info (an eliminated player's role) only appears
+ * feed. Reveal-gated info (an eliminated participant's role) only appears
  * here once a ROLE_REVEALED event exists in that feed. */
 export async function getProjectorState(
-  prisma: PrismaClient,
+  prisma: Queryable,
   gameId: string,
 ): Promise<ProjectorState> {
   const game = await prisma.game.findUnique({ where: { id: gameId }, include: { config: true } });
@@ -265,8 +354,8 @@ export async function getProjectorState(
   const [globalProgress, aliveCount, eliminatedCount, activeMeeting, events, result] =
     await Promise.all([
       computeGlobalTaskProgress(prisma, gameId),
-      prisma.player.count({ where: { gameId, status: PlayerStatus.ALIVE } }),
-      prisma.player.count({ where: { gameId, status: PlayerStatus.ELIMINATED } }),
+      prisma.participant.count({ where: { gameId, status: ParticipantStatus.ALIVE } }),
+      prisma.participant.count({ where: { gameId, status: ParticipantStatus.ELIMINATED } }),
       prisma.meeting.findFirst({
         where: { gameId, status: { not: MeetingStatus.REVEALED } },
         orderBy: { createdAt: "desc" },

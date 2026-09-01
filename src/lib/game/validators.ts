@@ -3,22 +3,23 @@ import { z } from "zod";
 /**
  * Every route handler parses its body through one of these before it
  * touches the engine. Note what's conspicuously absent from most of
- * them: playerId, role, score, and completion status are never accepted
- * from the client — those come from the session or are computed
- * server-side. See docs/SECURITY.md "Never trust from the client".
+ * them: participantId, role, score, completion status, and OTPs-to-
+ * compare-against are never accepted from the client — those come from
+ * the session or are computed server-side. See docs/SECURITY.md "Never
+ * trust from the client".
  */
 
-export const joinGameSchema = z.object({
-  playerCode: z.string().min(1).max(64),
+export const participantLoginSchema = z.object({
+  code: z.string().min(1).max(64),
 });
 
 export const startTaskSchema = z.object({
   taskId: z.string().min(1),
 });
 
-export const completeTaskSchema = z.object({
+export const submitOtpSchema = z.object({
   taskId: z.string().min(1),
-  verificationData: z.unknown().optional(),
+  otp: z.string().regex(/^\d{4}$/, "OTP must be 4 digits"),
 });
 
 export const scanLocationSchema = z.object({
@@ -33,11 +34,11 @@ export const callMeetingSchema = z.object({
 export const castVoteSchema = z.object({
   meetingId: z.string().min(1),
   /** null/omitted = explicit skip vote */
-  targetPlayerId: z.string().min(1).nullable().optional(),
+  targetParticipantId: z.string().min(1).nullable().optional(),
 });
 
-export const eliminatePlayerSchema = z.object({
-  playerId: z.string().min(1),
+export const eliminateParticipantSchema = z.object({
+  participantId: z.string().min(1),
   meetingId: z.string().min(1).optional(),
 });
 
@@ -49,10 +50,71 @@ export const configureRolesSchema = z.object({
   imposterCount: z.number().int().min(0),
 });
 
-export const createPlayerSchema = z.object({
-  displayName: z.string().min(1).max(64),
-  email: z.string().email().optional(),
-  team: z.string().max(64).optional(),
+export const setParticipantRoleSchema = z.object({
+  participantId: z.string().min(1),
+  role: z.enum(["ENGINEER", "IMPOSTER"]),
+});
+
+export const createParticipantSchema = z.object({
+  name: z.string().min(1).max(64),
+  groupId: z.string().min(1).optional(),
+});
+
+export const bulkImportParticipantsSchema = z.object({
+  names: z.array(z.string().min(1).max(64)).min(1).max(500),
+});
+
+export const updateParticipantSchema = z.object({
+  participantId: z.string().min(1),
+  name: z.string().min(1).max(64).optional(),
+  groupId: z.string().min(1).nullable().optional(),
+});
+
+export const participantIdSchema = z.object({
+  participantId: z.string().min(1),
+});
+
+export const createGroupSchema = z.object({
+  name: z.string().min(1).max(64),
+});
+
+export const assignGroupSchema = z.object({
+  participantId: z.string().min(1),
+  groupId: z.string().min(1).nullable(),
+});
+
+export const createTaskSchema = z.object({
+  roundId: z.string().min(1),
+  groupId: z.string().min(1).nullable().optional(),
+  title: z.string().min(1).max(120),
+  description: z.string().min(1).max(2000),
+  locationId: z.string().min(1).nullable().optional(),
+  difficulty: z.enum(["EASY", "MEDIUM", "HARD", "EXPERT"]),
+  estimatedMinutes: z.number().int().min(1).max(240),
+  points: z.number().int().min(0).max(1000),
+});
+
+export const taskIdSchema = z.object({
+  taskId: z.string().min(1),
+});
+
+export const assignTaskToGroupSchema = z.object({
+  taskId: z.string().min(1),
+  groupId: z.string().min(1).nullable(),
+});
+
+export const assignTaskToParticipantSchema = z.object({
+  taskId: z.string().min(1),
+  participantId: z.string().min(1),
+});
+
+export const sendChatMessageSchema = z.object({
+  meetingId: z.string().min(1),
+  message: z.string().min(1).max(500),
+});
+
+export const deleteChatMessageSchema = z.object({
+  messageId: z.string().min(1),
 });
 
 export const updateGameConfigSchema = z.object({
@@ -63,11 +125,7 @@ export const updateGameConfigSchema = z.object({
   allowImposterElimination: z.boolean().optional(),
   engineerWinCondition: z.enum(["ENGINEERS_COMPLETE_TASKS", "FINAL_ROUND_RESULT"]).optional(),
   imposterWinCondition: z.enum(["IMPOSTERS_REMAIN", "FINAL_ROUND_RESULT"]).optional(),
-  voteTiePolicy: z.enum(["NO_ELIMINATION", "ADMIN_RESOLVES"]).optional(),
-});
-
-export const adminLoginSchema = z.object({
-  gameId: z.string().min(1),
-  passphrase: z.string().min(1),
-  role: z.enum(["ADMIN", "PROJECTOR"]),
+  voteTiePolicy: z.enum(["NO_ELIMINATION", "ADMIN_DECISION"]).optional(),
+  otpRateLimitMax: z.number().int().min(1).max(100).optional(),
+  otpRateLimitWindowSeconds: z.number().int().min(1).max(3600).optional(),
 });

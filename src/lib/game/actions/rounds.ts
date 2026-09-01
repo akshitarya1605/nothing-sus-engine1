@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
-import { GameStatus, RoundStatus, RoundPhase, PlayerStatus } from "@prisma/client";
+import { GameStatus, RoundStatus, RoundPhase, ParticipantStatus } from "@prisma/client";
 import { prisma as defaultPrisma } from "../../db/prisma";
 import { GameEngineError } from "../errors";
 import { assertValidTransition } from "../transitions";
@@ -205,10 +205,10 @@ export async function finishGame(gameId: string, prisma: PrismaClient = defaultP
     assertValidTransition(game.status, GameStatus.FINISHED);
 
     const [aliveEngineers, aliveImposters, totalTasks, completedTasks] = await Promise.all([
-      tx.player.count({ where: { gameId, status: PlayerStatus.ALIVE, role: "ENGINEER" } }),
-      tx.player.count({ where: { gameId, status: PlayerStatus.ALIVE, role: "IMPOSTER" } }),
-      tx.playerTask.count({ where: { task: { gameId }, status: { not: "LOCKED" } } }),
-      tx.playerTask.count({ where: { task: { gameId }, status: "COMPLETED" } }),
+      tx.participant.count({ where: { gameId, status: ParticipantStatus.ALIVE, role: "ENGINEER" } }),
+      tx.participant.count({ where: { gameId, status: ParticipantStatus.ALIVE, role: "IMPOSTER" } }),
+      tx.participantTask.count({ where: { task: { gameId }, status: { not: "LOCKED" } } }),
+      tx.participantTask.count({ where: { task: { gameId }, status: "COMPLETED" } }),
     ]);
 
     let winner: "ENGINEERS" | "IMPOSTERS" | "NONE" = "NONE";
@@ -228,8 +228,8 @@ export async function finishGame(gameId: string, prisma: PrismaClient = defaultP
       reason = "Final round ended without a decisive condition being met.";
     }
 
-    const topScorer = await tx.playerTask.groupBy({
-      by: ["playerId"],
+    const topScorer = await tx.participantTask.groupBy({
+      by: ["participantId"],
       where: { task: { gameId }, status: "COMPLETED" },
       _sum: { score: true },
       orderBy: { _sum: { score: "desc" } },
@@ -248,8 +248,8 @@ export async function finishGame(gameId: string, prisma: PrismaClient = defaultP
         gameId,
         winner,
         reason,
-        topScorerPlayerId: topScorer[0]?.playerId,
-        runnerUpPlayerId: topScorer[1]?.playerId,
+        topScorerParticipantId: topScorer[0]?.participantId,
+        runnerUpParticipantId: topScorer[1]?.participantId,
         stats: {
           aliveEngineers,
           aliveImposters,
@@ -274,7 +274,7 @@ export async function finishGame(gameId: string, prisma: PrismaClient = defaultP
 /**
  * Server-side "tick" — advances state that depends purely on elapsed
  * time (the automatic meeting rule), and does nothing otherwise. Called
- * at the top of every player/admin/projector state read (see
+ * at the top of every participant/admin/projector state read (see
  * app/api/game/*), NOT from a browser setTimeout and NOT from a
  * standalone cron. This is what makes a refresh mid-round always
  * correct: the check is a pure function of stored timestamps vs. now,

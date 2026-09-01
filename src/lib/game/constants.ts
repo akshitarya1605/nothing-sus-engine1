@@ -2,10 +2,10 @@ import {
   GameStatus,
   RoundPhase,
   RoundStatus,
-  PlayerStatus,
-  PlayerRole,
+  ParticipantStatus,
+  ParticipantRole,
   TaskStatus,
-  PlayerTaskStatus,
+  ParticipantTaskStatus,
   MeetingStatus,
   MeetingType,
   EliminationMethod,
@@ -17,10 +17,10 @@ export {
   GameStatus,
   RoundPhase,
   RoundStatus,
-  PlayerStatus,
-  PlayerRole,
+  ParticipantStatus,
+  ParticipantRole,
   TaskStatus,
-  PlayerTaskStatus,
+  ParticipantTaskStatus,
   MeetingStatus,
   MeetingType,
   EliminationMethod,
@@ -44,7 +44,7 @@ export const DEFAULT_GAME_CONFIG = {
 
 export const ENGINEER_WIN_CONDITIONS = ["ENGINEERS_COMPLETE_TASKS", "FINAL_ROUND_RESULT"] as const;
 export const IMPOSTER_WIN_CONDITIONS = ["IMPOSTERS_REMAIN", "FINAL_ROUND_RESULT"] as const;
-export const VOTE_TIE_POLICIES = ["NO_ELIMINATION", "ADMIN_RESOLVES"] as const;
+export const VOTE_TIE_POLICIES = ["NO_ELIMINATION", "ADMIN_DECISION"] as const;
 
 export type EngineerWinCondition = (typeof ENGINEER_WIN_CONDITIONS)[number];
 export type ImposterWinCondition = (typeof IMPOSTER_WIN_CONDITIONS)[number];

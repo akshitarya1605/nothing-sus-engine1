@@ -3,7 +3,7 @@ import {
   EliminationMethod,
   GameStatus,
   MeetingStatus,
-  PlayerStatus,
+  ParticipantStatus,
   RoundPhase,
   RoundStatus,
 } from "@prisma/client";
@@ -12,36 +12,36 @@ import { GameEngineError } from "../errors";
 import { assertValidTransition } from "../transitions";
 import { writeAuditLog, ActorType } from "../audit";
 import { publishEvent } from "../events/publisher";
-import { eliminatePlayerTx } from "./eliminations";
+import { eliminateParticipantTx } from "./eliminations";
 
 export interface VoteTally {
-  counts: Map<string, number>; // targetPlayerId -> vote count (skips excluded)
+  counts: Map<string, number>; // targetParticipantId -> vote count (skips excluded)
   skipCount: number;
   totalVotes: number;
-  /** the single player with strictly more votes than everyone else, or
+  /** the single participant with strictly more votes than everyone else, or
    * null if there's a tie for first place or nobody voted for anyone */
   winner: string | null;
   isTie: boolean;
 }
 
-export function tallyVotes(votes: Pick<Vote, "targetPlayerId">[]): VoteTally {
+export function tallyVotes(votes: Pick<Vote, "targetParticipantId">[]): VoteTally {
   const counts = new Map<string, number>();
   let skipCount = 0;
   for (const vote of votes) {
-    if (!vote.targetPlayerId) {
+    if (!vote.targetParticipantId) {
       skipCount++;
       continue;
     }
-    counts.set(vote.targetPlayerId, (counts.get(vote.targetPlayerId) ?? 0) + 1);
+    counts.set(vote.targetParticipantId, (counts.get(vote.targetParticipantId) ?? 0) + 1);
   }
 
   let winner: string | null = null;
   let topCount = -1;
   let isTie = false;
-  for (const [playerId, count] of counts) {
+  for (const [participantId, count] of counts) {
     if (count > topCount) {
       topCount = count;
-      winner = playerId;
+      winner = participantId;
       isTie = false;
     } else if (count === topCount) {
       isTie = true;
@@ -52,14 +52,14 @@ export function tallyVotes(votes: Pick<Vote, "targetPlayerId">[]): VoteTally {
   return { counts, skipCount, totalVotes: votes.length, winner, isTie };
 }
 
-/** Players never see live totals — this only returns success/failure.
+/** Participants never see live totals — this only returns success/failure.
  * The @@unique([meetingId, voterId]) constraint is what actually makes
  * a duplicate vote impossible, even under a race; the pre-check below
  * is just for a clean error message in the common case. */
 export async function castVote(
   gameId: string,
   voterId: string,
-  input: { meetingId: string; targetPlayerId: string | null | undefined },
+  input: { meetingId: string; targetParticipantId: string | null | undefined },
   prisma: PrismaClient = defaultPrisma,
 ) {
   return prisma.$transaction(async (tx) => {
@@ -69,10 +69,10 @@ export async function castVote(
       throw new GameEngineError("CONFLICT", `Voting is not open (game status: ${game.status})`);
     }
 
-    const voter = await tx.player.findUnique({ where: { id: voterId } });
-    if (!voter || voter.gameId !== gameId) throw new GameEngineError("NOT_FOUND", "Player not found");
-    if (voter.status !== PlayerStatus.ALIVE) {
-      throw new GameEngineError("FORBIDDEN", "Eliminated players cannot vote");
+    const voter = await tx.participant.findUnique({ where: { id: voterId } });
+    if (!voter || voter.gameId !== gameId) throw new GameEngineError("NOT_FOUND", "Participant not found");
+    if (voter.status !== ParticipantStatus.ALIVE) {
+      throw new GameEngineError("FORBIDDEN", "Eliminated participants cannot vote");
     }
 
     const meeting = await tx.meeting.findUnique({ where: { id: input.meetingId } });
@@ -83,23 +83,23 @@ export async function castVote(
       throw new GameEngineError("CONFLICT", "This meeting is not in its voting phase");
     }
 
-    const targetId = input.targetPlayerId ?? null;
+    const targetId = input.targetParticipantId ?? null;
     if (targetId) {
       if (targetId === voterId) {
         throw new GameEngineError("VALIDATION", "You cannot vote for yourself");
       }
-      const target = await tx.player.findUnique({ where: { id: targetId } });
+      const target = await tx.participant.findUnique({ where: { id: targetId } });
       if (!target || target.gameId !== gameId) {
         throw new GameEngineError("VALIDATION", "Invalid vote target");
       }
-      if (target.status !== PlayerStatus.ALIVE) {
-        throw new GameEngineError("VALIDATION", "Cannot vote for a player who is not alive");
+      if (target.status !== ParticipantStatus.ALIVE) {
+        throw new GameEngineError("VALIDATION", "Cannot vote for a participant who is not alive");
       }
     }
 
     try {
       await tx.vote.create({
-        data: { meetingId: input.meetingId, voterId, targetPlayerId: targetId },
+        data: { meetingId: input.meetingId, voterId, targetParticipantId: targetId },
       });
     } catch (err) {
       // unique constraint on (meetingId, voterId)
@@ -166,13 +166,13 @@ export async function closeVoting(
 
 export interface RevealResultOutcome {
   outcome: "ELIMINATED" | "NO_ELIMINATION" | "TIE_NEEDS_ADMIN";
-  eliminatedPlayerId?: string;
+  eliminatedParticipantId?: string;
 }
 
 /**
  * Admin "REVEAL RESULT" — tallies the (already-closed) ballot and, per
  * the game's configured tie policy, either eliminates the plurality
- * target, announces no elimination, or (ADMIN_RESOLVES) stops and waits
+ * target, announces no elimination, or (ADMIN_DECISION) stops and waits
  * for the admin to resolve the tie explicitly. Never silently picks a
  * winner on a tie.
  */
@@ -199,8 +199,8 @@ export async function revealResult(
   if (tally.winner) {
     const winnerId = tally.winner;
     await prisma.$transaction(async (tx) => {
-      await eliminatePlayerTx(tx, gameId, {
-        playerId: winnerId,
+      await eliminateParticipantTx(tx, gameId, {
+        participantId: winnerId,
         meetingId,
         method: EliminationMethod.VOTE,
         actorId: null,
@@ -210,10 +210,10 @@ export async function revealResult(
         data: { status: MeetingStatus.REVEALED, endedAt: new Date() },
       });
     });
-    return { outcome: "ELIMINATED", eliminatedPlayerId: winnerId };
+    return { outcome: "ELIMINATED", eliminatedParticipantId: winnerId };
   }
 
-  if (tally.isTie && tiePolicy === "ADMIN_RESOLVES") {
+  if (tally.isTie && tiePolicy === "ADMIN_DECISION") {
     return { outcome: "TIE_NEEDS_ADMIN" };
   }
 
@@ -242,13 +242,13 @@ export async function revealResult(
   return { outcome: "NO_ELIMINATION" };
 }
 
-/** Explicit admin action for the ADMIN_RESOLVES tie policy — the admin
- * picks either a player to eliminate or "no elimination". This never
+/** Explicit admin action for the ADMIN_DECISION tie policy — the admin
+ * picks either a participant to eliminate or "no elimination". This never
  * runs automatically. */
 export async function resolveTie(
   gameId: string,
   meetingId: string,
-  resolution: { eliminatePlayerId: string | null },
+  resolution: { eliminateParticipantId: string | null },
   prisma: PrismaClient = defaultPrisma,
 ) {
   const meeting = await prisma.meeting.findUnique({ where: { id: meetingId } });
@@ -258,9 +258,9 @@ export async function resolveTie(
   }
 
   await prisma.$transaction(async (tx) => {
-    if (resolution.eliminatePlayerId) {
-      await eliminatePlayerTx(tx, gameId, {
-        playerId: resolution.eliminatePlayerId,
+    if (resolution.eliminateParticipantId) {
+      await eliminateParticipantTx(tx, gameId, {
+        participantId: resolution.eliminateParticipantId,
         meetingId,
         method: EliminationMethod.ADMIN,
         actorId: "admin",
@@ -280,7 +280,7 @@ export async function resolveTie(
       targetId: meetingId,
       metadata: resolution,
     });
-    if (!resolution.eliminatePlayerId) {
+    if (!resolution.eliminateParticipantId) {
       await publishEvent(tx, {
         gameId,
         type: "ANNOUNCEMENT_CREATED",

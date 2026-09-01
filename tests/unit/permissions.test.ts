@@ -1,18 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { GameStatus, PlayerStatus } from "@prisma/client";
+import { GameStatus, ParticipantStatus } from "@prisma/client";
 import {
   assertGameStatus,
-  assertPlayerAlive,
-  assertPlayerInGame,
+  assertParticipantAlive,
+  assertParticipantInGame,
   assertRoundIsCurrent,
   assertRolesLocked,
 } from "@/lib/game/permissions";
 import { GameEngineError } from "@/lib/game/errors";
 
 describe("permission guards", () => {
-  it("assertPlayerAlive rejects an eliminated player", () => {
-    expect(() => assertPlayerAlive({ status: PlayerStatus.ELIMINATED })).toThrow(GameEngineError);
-    expect(() => assertPlayerAlive({ status: PlayerStatus.ALIVE })).not.toThrow();
+  it("assertParticipantAlive rejects an eliminated participant", () => {
+    expect(() => assertParticipantAlive({ status: ParticipantStatus.ELIMINATED })).toThrow(GameEngineError);
+    expect(() => assertParticipantAlive({ status: ParticipantStatus.ALIVE })).not.toThrow();
   });
 
   it("assertGameStatus rejects a status outside the allowed set", () => {
@@ -20,13 +20,13 @@ describe("permission guards", () => {
     expect(() => assertGameStatus({ status: GameStatus.LIVE }, [GameStatus.LIVE, GameStatus.MEETING])).not.toThrow();
   });
 
-  it("assertPlayerInGame rejects a player from a different game", () => {
-    expect(() => assertPlayerInGame({ gameId: "game-a" }, "game-b")).toThrow(GameEngineError);
-    expect(() => assertPlayerInGame({ gameId: "game-a" }, "game-a")).not.toThrow();
+  it("assertParticipantInGame rejects a participant from a different game", () => {
+    expect(() => assertParticipantInGame({ gameId: "game-a" }, "game-b")).toThrow(GameEngineError);
+    expect(() => assertParticipantInGame({ gameId: "game-a" }, "game-a")).not.toThrow();
   });
 
   it("assertRoundIsCurrent rejects a task from a non-current round (the brief's exact example)", () => {
-    // "Player cannot complete a Round 3 task during Round 1"
+    // "Participant cannot complete a Round 3 task during Round 1"
     expect(() => assertRoundIsCurrent({ number: 3 }, { currentRoundNumber: 1 })).toThrow(GameEngineError);
     expect(() => assertRoundIsCurrent({ number: 1 }, { currentRoundNumber: 1 })).not.toThrow();
   });

@@ -8,7 +8,7 @@ describe("event visibility table", () => {
     // these are exactly the two things the brief calls out as must-never-leak
     expect(EVENT_VISIBILITY.VOTE_CAST).not.toBe("PUBLIC");
     expect(EVENT_VISIBILITY.ROLE_REVEAL_PENDING).not.toBe("PUBLIC");
-    expect(EVENT_VISIBILITY.YOUR_ROLE_ASSIGNED).toBe("PLAYER");
+    expect(EVENT_VISIBILITY.YOUR_ROLE_ASSIGNED).toBe("PARTICIPANT");
   });
 
   it("PLAYER_ELIMINATED (public) is a distinct event from ROLE_REVEALED (also public, but only fired on explicit admin action)", () => {
@@ -30,30 +30,30 @@ function fakeTx() {
 }
 
 describe("publishEvent", () => {
-  it("rejects a PLAYER-visibility event with no targetPlayerId", async () => {
+  it("rejects a PARTICIPANT-visibility event with no targetParticipantId", async () => {
     await expect(
       publishEvent(fakeTx(), { gameId: "g1", type: "YOUR_ROLE_ASSIGNED", payload: { role: "ENGINEER" } }),
     ).rejects.toThrow(GameEngineError);
   });
 
-  it("rejects a targetPlayerId on a non-PLAYER-visibility event", async () => {
+  it("rejects a targetParticipantId on a non-PARTICIPANT-visibility event", async () => {
     await expect(
       publishEvent(fakeTx(), {
         gameId: "g1",
         type: "GAME_STARTED",
         payload: { gameId: "g1" },
-        targetPlayerId: "someone",
+        targetParticipantId: "someone",
       }),
     ).rejects.toThrow(GameEngineError);
   });
 
-  it("accepts a correctly-scoped PLAYER event", async () => {
+  it("accepts a correctly-scoped PARTICIPANT event", async () => {
     await expect(
       publishEvent(fakeTx(), {
         gameId: "g1",
         type: "YOUR_ROLE_ASSIGNED",
         payload: { role: "IMPOSTER" },
-        targetPlayerId: "player-1",
+        targetParticipantId: "participant-1",
       }),
     ).resolves.toBeUndefined();
   });

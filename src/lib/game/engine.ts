@@ -7,7 +7,7 @@
  *   UI -> route handler -> game engine (this file) -> database -> realtime event
  */
 
-export * as PlayersEngine from "./actions/players";
+export * as ParticipantsEngine from "./actions/participants";
 export * as RoundsEngine from "./actions/rounds";
 export * as TasksEngine from "./actions/tasks";
 export * as MeetingsEngine from "./actions/meetings";
@@ -15,8 +15,10 @@ export * as VotingEngine from "./actions/voting";
 export * as EliminationsEngine from "./actions/eliminations";
 export * as LocationsEngine from "./actions/locations";
 export * as AnnouncementsEngine from "./actions/announcements";
+export * as GroupsEngine from "./actions/groups";
+export * as ChatEngine from "./actions/chat";
 
-export { getPlayerGameState, getAdminGameState, getProjectorState } from "./state";
+export { getParticipantGameState, getAdminGameState, getProjectorState } from "./state";
 export { checkAutoAdvance } from "./actions/rounds";
 
 export { GameEngineError, HTTP_STATUS_BY_CODE } from "./errors";

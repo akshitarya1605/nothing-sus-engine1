@@ -1,37 +1,41 @@
 import { GameEngineError } from "../game/errors";
-import { getSession, type SessionPayload, type SessionRole } from "./session";
+import { getAdminSession, getParticipantSession, getSpectatorSession } from "./session";
 
-/** Every route handler that mutates or reads privileged data calls one
- * of these first. There is no "trust the body" path — the role and
- * playerId always come from the verified session, never from request
- * JSON. */
-async function requireSession(): Promise<SessionPayload> {
-  const session = await getSession();
+/** Every route that mutates or reads privileged data calls one of
+ * these first. Role and participantId always come from a verified,
+ * DB-backed session — never from the request body. */
+
+export async function requireParticipant(): Promise<{ participantId: string; gameId: string }> {
+  const session = await getParticipantSession();
   if (!session) {
-    throw new GameEngineError("UNAUTHENTICATED", "No active session");
+    throw new GameEngineError("UNAUTHENTICATED", "No active participant session");
   }
   return session;
 }
 
-export async function requireRole(...roles: SessionRole[]): Promise<SessionPayload> {
-  const session = await requireSession();
-  if (!roles.includes(session.role)) {
-    throw new GameEngineError("FORBIDDEN", `Requires one of: ${roles.join(", ")}`);
+export async function requireAdmin(): Promise<{ gameId: string }> {
+  const session = await getAdminSession();
+  if (!session) {
+    throw new GameEngineError("UNAUTHENTICATED", "No active admin session");
   }
   return session;
 }
 
-export const requireAdmin = () => requireRole("ADMIN");
-export const requireProjector = () => requireRole("ADMIN", "PROJECTOR");
-export const requirePlayer = () => requireRole("PLAYER");
-
-/** Player session, with playerId guaranteed present (it always is for a
- * validly-issued PLAYER session, but this keeps callers from needing a
- * non-null assertion). */
-export async function requirePlayerSession(): Promise<SessionPayload & { playerId: string }> {
-  const session = await requireRole("PLAYER");
-  if (!session.playerId) {
-    throw new GameEngineError("UNAUTHENTICATED", "Player session missing playerId");
+export async function requireSpectator(): Promise<{ gameId: string }> {
+  const session = await getSpectatorSession();
+  if (!session) {
+    throw new GameEngineError("UNAUTHENTICATED", "No active spectator session");
   }
-  return session as SessionPayload & { playerId: string };
+  return session;
+}
+
+/** Admin and spectator overlap in a few read-only cases (e.g. chat
+ * moderation view) — most routes want exactly one of the three guards
+ * above, not this. */
+export async function requireAdminOrSpectator(): Promise<{ gameId: string }> {
+  const admin = await getAdminSession();
+  if (admin) return admin;
+  const spectator = await getSpectatorSession();
+  if (spectator) return spectator;
+  throw new GameEngineError("UNAUTHENTICATED", "No active admin or spectator session");
 }

@@ -5,11 +5,16 @@
 //   trusting a value the client sent; every mutation goes through
 //   lib/game/* which re-derives/validates state from this database.
 // - Realtime fan-out rides on Postgres NOTIFY, triggered from the same
-//   transaction that writes a GameEvent row (see lib/game/events).
-// - Role privacy and vote privacy are enforced in the query layer
-//   (lib/game/queries + API route guards), not via Postgres RLS, since
-//   this stack is Prisma + a plain Postgres connection rather than
-//   Supabase. See docs/SECURITY.md for why, and what that trades off.
+//   transaction that writes a GameEvent row (see lib/game/events). The
+//   Supabase Realtime "Postgres Changes" path (Milestone 1) runs alongside
+//   it, authorized by the RLS policies below.
+// - Role privacy and vote privacy are enforced primarily in the query
+//   layer (lib/game/state + API route guards). As of Milestone 1 there is
+//   also a row-level RLS backstop (see prisma/migrations/*_rls_*): it scopes
+//   reads to the caller's own game/audience when a request goes through
+//   lib/db/rlsContext.ts, and it authorizes what Supabase Realtime forwards.
+//   RLS is row-level only — column privacy (Participant.role, Task.otpHash)
+//   stays a query-layer job. See docs/SECURITY.md for the full rationale.
 
 generator client {
   provider = "prisma-client-js"
@@ -61,20 +66,31 @@ model Game {
   rolesLocked   Boolean   @default(false)
   rolesLockedAt DateTime?
 
+  /// Long random tokens for the secret admin/spectator URLs
+  /// (/control/<adminSecret>, /spectator/<spectatorSecret>). Generated
+  /// with crypto.randomBytes at game creation — never a Prisma @default,
+  /// since these need real entropy, not a cuid. Never returned in any
+  /// participant-facing response. See docs/SECURITY.md.
+  adminSecret     String @unique
+  spectatorSecret String @unique
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  config       GameConfig?
-  result       GameResult?
-  rounds       Round[]
-  players      Player[]
-  locations    Location[]
-  tasks        Task[]
-  meetings     Meeting[]
-  eliminations Elimination[]
-  abilities    Ability[]
-  events       GameEvent[]
-  auditLogs    AuditLog[]
+  config            GameConfig?
+  result            GameResult?
+  rounds            Round[]
+  participants      Participant[]
+  groups            Group[]
+  locations         Location[]
+  tasks             Task[]
+  meetings          Meeting[]
+  eliminations      Elimination[]
+  abilities         Ability[]
+  events            GameEvent[]
+  auditLogs         AuditLog[]
+  adminSessions     AdminSession[]
+  spectatorSessions SpectatorSession[]
 }
 
 /// Configurable rules. Never scatter these as magic numbers in code —
@@ -95,8 +111,12 @@ model GameConfig {
   engineerWinCondition String @default("ENGINEERS_COMPLETE_TASKS")
   imposterWinCondition String @default("IMPOSTERS_REMAIN")
 
-  /// "NO_ELIMINATION" | "ADMIN_RESOLVES"
+  /// "NO_ELIMINATION" | "ADMIN_DECISION"
   voteTiePolicy String @default("NO_ELIMINATION")
+
+  /// max OTP attempts per participant per task within otpRateLimitWindowSeconds
+  otpRateLimitMax           Int @default(10)
+  otpRateLimitWindowSeconds Int @default(60)
 
   updatedAt DateTime @updatedAt
 }
@@ -112,11 +132,11 @@ model GameResult {
   gameId String @unique
   game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
 
-  winner            GameWinner
-  reason            String
-  topScorerPlayerId String?
-  runnerUpPlayerId  String?
-  stats             Json
+  winner                 GameWinner
+  reason                 String
+  topScorerParticipantId String?
+  runnerUpParticipantId  String?
+  stats                  Json
 
   finishedAt DateTime @default(now())
 }
@@ -165,6 +185,26 @@ model Round {
 }
 
 // ---------------------------------------------------------------------
+// Groups
+// ---------------------------------------------------------------------
+
+model Group {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  name String
+
+  createdAt DateTime @default(now())
+
+  participants Participant[]
+  tasks        Task[]
+
+  @@unique([gameId, name])
+  @@index([gameId])
+}
+
+// ---------------------------------------------------------------------
 // Locations
 // ---------------------------------------------------------------------
 
@@ -187,7 +227,7 @@ model Location {
   createdAt DateTime @default(now())
 
   tasks          Task[]
-  players        Player[]        @relation("PlayerCurrentLocation")
+  participants   Participant[]   @relation("ParticipantCurrentLocation")
   locationEvents LocationEvent[]
 
   @@index([gameId])
@@ -199,70 +239,128 @@ enum LocationEventType {
 }
 
 model LocationEvent {
-  id         String            @id @default(cuid())
-  gameId     String
-  playerId   String
-  locationId String
-  type       LocationEventType
+  id            String            @id @default(cuid())
+  gameId        String
+  participantId String
+  locationId    String
+  type          LocationEventType
 
-  player   Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  location    Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
 
   @@index([gameId, createdAt])
-  @@index([playerId])
+  @@index([participantId])
 }
 
 // ---------------------------------------------------------------------
-// Players + roles
+// Participants + roles
 // ---------------------------------------------------------------------
 
-enum PlayerStatus {
+enum ParticipantStatus {
   ALIVE
   ELIMINATED
   SPECTATOR
-  DISCONNECTED
 }
 
-enum PlayerRole {
+enum ParticipantRole {
   ENGINEER
   IMPOSTER
 }
 
-model Player {
+model Participant {
   id     String @id @default(cuid())
   gameId String
   game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
 
-  /// short join code the player authenticates with, e.g. "RED-7F2A"
-  playerCode  String  @unique
-  displayName String
-  email       String?
-  avatarUrl   String?
-  team        String?
+  /// the one-code login credential, e.g. "NS-7K4P92" — globally unique
+  /// (not just per-game) so login needs only the code, nothing else.
+  code String @unique
+  name String
+
+  groupId String?
+  group   Group?  @relation(fields: [groupId], references: [id])
 
   /// null until roles are assigned server-side
-  role   PlayerRole?
-  status PlayerStatus @default(ALIVE)
+  role   ParticipantRole?
+  status ParticipantStatus @default(ALIVE)
 
   currentRoundNumber Int?
   currentLocationId  String?
-  currentLocation    Location? @relation("PlayerCurrentLocation", fields: [currentLocationId], references: [id])
+  currentLocation    Location? @relation("ParticipantCurrentLocation", fields: [currentLocationId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  playerTasks    PlayerTask[]
-  votesCast      Vote[]          @relation("VoterVotes")
-  votesReceived  Vote[]          @relation("TargetVotes")
-  eliminations   Elimination[]
-  locationEvents LocationEvent[]
-  abilityUses    AbilityUse[]
-  meetingsCalled Meeting[]       @relation("MeetingCalledByPlayer")
+  sessions         ParticipantSession[]
+  participantTasks ParticipantTask[]
+  taskAttempts     TaskAttempt[]
+  votesCast        Vote[]               @relation("VoterVotes")
+  votesReceived    Vote[]               @relation("TargetVotes")
+  eliminations     Elimination[]
+  locationEvents   LocationEvent[]
+  abilityUses      AbilityUse[]
+  meetingsCalled   Meeting[]            @relation("MeetingCalledByParticipant")
+  chatMessages     ChatMessage[]
 
   @@index([gameId, status])
   @@index([gameId, role])
+  @@index([groupId])
+}
+
+/// One row per currently-or-previously active device session for a
+/// participant. Login enforces "one active device at a time" by
+/// checking for a row here with revokedAt = null and expiresAt in the
+/// future before allowing a new one — see docs/SECURITY.md "Single
+/// device session".
+model ParticipantSession {
+  id            String      @id @default(cuid())
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  /// sha256 of the session token — the raw token only ever exists in
+  /// the httpOnly cookie and the moment it's generated server-side.
+  sessionTokenHash String @unique
+
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  revokedBy  String? // "ADMIN" | "RELOGIN" | null
+
+  @@index([participantId, revokedAt])
+}
+
+/// Exchanged for an httpOnly admin cookie the moment /control/<secret>
+/// is visited — the secret itself is never stored client-side again
+/// after that. See docs/SECURITY.md "Admin access".
+model AdminSession {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  tokenHash String @unique
+
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  @@index([gameId, revokedAt])
+}
+
+model SpectatorSession {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  tokenHash String @unique
+
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  @@index([gameId, revokedAt])
 }
 
 // ---------------------------------------------------------------------
@@ -277,20 +375,11 @@ enum TaskDifficulty {
 }
 
 /// Global availability toggle for the task definition itself — NOT a
-/// player's personal progress (see PlayerTask for that).
+/// participant's personal progress (see ParticipantTask for that).
 enum TaskStatus {
   LOCKED
   AVAILABLE
   DISABLED
-}
-
-enum CompletionType {
-  MANUAL_CONFIRMATION
-  QUIZ
-  CODE
-  SEQUENCE
-  UPLOAD
-  ADMIN_VERIFICATION
 }
 
 model Task {
@@ -301,7 +390,12 @@ model Task {
   roundId String
   round   Round  @relation(fields: [roundId], references: [id], onDelete: Cascade)
 
-  name        String
+  /// set to restrict/auto-assign this task to one group; null = open to
+  /// whichever participants an admin explicitly assigns individually
+  groupId String?
+  group   Group?  @relation(fields: [groupId], references: [id])
+
+  title       String
   description String
 
   locationId String?
@@ -316,47 +410,73 @@ model Task {
   availableFrom  DateTime?
   availableUntil DateTime?
 
-  completionType CompletionType @default(MANUAL_CONFIRMATION)
+  /// sha256(otp) — the plaintext 4-digit code is never stored. Given a
+  /// 4-digit space is small, the OTP rate limit (GameConfig.otpRateLimitMax
+  /// per otpRateLimitWindowSeconds, enforced via TaskAttempt) is the real
+  /// defense, not the hash — but we still never persist or transmit the
+  /// plaintext value once generated, per the brief.
+  otpHash String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  playerTasks PlayerTask[]
+  participantTasks ParticipantTask[]
+  taskAttempts     TaskAttempt[]
 
   @@index([gameId, roundId, status])
+  @@index([groupId])
 }
 
-enum PlayerTaskStatus {
+enum ParticipantTaskStatus {
   LOCKED
   AVAILABLE
   IN_PROGRESS
   COMPLETED
 }
 
-/// A task DEFINITION is global; a PLAYER's completion of it is personal.
-/// Completing a task never mutates Task.status — only this row.
-model PlayerTask {
-  id       String @id @default(cuid())
-  playerId String
-  taskId   String
+/// A task DEFINITION is global; a PARTICIPANT's completion of it is
+/// personal. Completing a task never mutates Task.status — only this row.
+model ParticipantTask {
+  id            String @id @default(cuid())
+  participantId String
+  taskId        String
 
-  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  task        Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
-  status      PlayerTaskStatus @default(LOCKED)
-  startedAt   DateTime?
-  completedAt DateTime?
-  score       Int?
-  attempts    Int              @default(0)
+  status        ParticipantTaskStatus @default(LOCKED)
+  startedAt     DateTime?
+  completedAt   DateTime?
+  score         Int?
+  attemptCount  Int                   @default(0)
+  lastAttemptAt DateTime?
 
   verificationData Json?
 
-  @@unique([playerId, taskId])
+  @@unique([participantId, taskId])
   @@index([taskId, status])
 }
 
+/// Every OTP attempt (right or wrong) — the audit trail behind the rate
+/// limit and behind "average completion time" / "attempt count" admin
+/// analytics. Never stores the entered OTP itself, just whether it
+/// matched.
+model TaskAttempt {
+  id            String  @id @default(cuid())
+  participantId String
+  taskId        String
+  wasCorrect    Boolean
+
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  task        Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([participantId, taskId, createdAt])
+}
+
 // ---------------------------------------------------------------------
-// Meetings + voting
+// Meetings + chat + voting
 // ---------------------------------------------------------------------
 
 enum MeetingStatus {
@@ -392,15 +512,38 @@ model Meeting {
   reason          String?
 
   calledById String?
-  calledBy   Player? @relation("MeetingCalledByPlayer", fields: [calledById], references: [id])
+  calledBy   Participant? @relation("MeetingCalledByParticipant", fields: [calledById], references: [id])
 
   createdAt DateTime @default(now())
 
   votes        Vote[]
   eliminations Elimination[]
+  chatMessages ChatMessage[]
 
   @@index([gameId, roundId])
   @@index([gameId, status])
+}
+
+/// Chat is scoped to a meeting (discussion + voting window). Alive
+/// participants only — see lib/game/actions/chat.ts. Never shown to the
+/// projector (spec: "Projector does NOT display chat").
+model ChatMessage {
+  id        String  @id @default(cuid())
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  senderId String
+  sender   Participant @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  /// plain text only — sanitized/stripped of markup before storage, see
+  /// lib/game/actions/chat.ts. Never rendered as raw HTML on any client.
+  message String
+
+  deletedAt DateTime? // admin moderation — soft delete, not a hard delete
+
+  createdAt DateTime @default(now())
+
+  @@index([meetingId, createdAt])
 }
 
 model Vote {
@@ -409,11 +552,11 @@ model Vote {
   meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
 
   voterId String
-  voter   Player @relation("VoterVotes", fields: [voterId], references: [id], onDelete: Cascade)
+  voter   Participant @relation("VoterVotes", fields: [voterId], references: [id], onDelete: Cascade)
 
   /// null = explicit "skip vote"
-  targetPlayerId String?
-  target         Player? @relation("TargetVotes", fields: [targetPlayerId], references: [id])
+  targetParticipantId String?
+  target              Participant? @relation("TargetVotes", fields: [targetParticipantId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -440,8 +583,8 @@ model Elimination {
   meetingId String?
   meeting   Meeting? @relation(fields: [meetingId], references: [id])
 
-  playerId String
-  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 
   method EliminationMethod
 
@@ -451,7 +594,7 @@ model Elimination {
   createdAt DateTime @default(now())
 
   @@index([gameId])
-  @@index([playerId])
+  @@index([participantId])
 }
 
 // ---------------------------------------------------------------------
@@ -486,32 +629,35 @@ model AbilityUse {
   abilityId String
   ability   Ability @relation(fields: [abilityId], references: [id], onDelete: Cascade)
 
-  playerId String
-  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 
   targetId String?
   metadata Json?
 
   usedAt DateTime @default(now())
 
-  @@index([abilityId, playerId])
+  @@index([abilityId, participantId])
 }
 
 // ---------------------------------------------------------------------
 // Realtime events + audit log
 // ---------------------------------------------------------------------
 
-/// PUBLIC: safe for every connected client (players, projector).
+/// PUBLIC: safe for every connected client (participants, spectator).
 /// ADMIN: admin console only.
-/// PROJECTOR: projector console only (may include reveal-gated data
-///   the public channel doesn't get, but never raw role tables).
-/// PLAYER: only the player named in targetPlayerId (their own role,
-///   their own task state, etc).
+/// PROJECTOR: spectator console only (may include reveal-gated data the
+///   public channel doesn't get, but never raw role tables or chat).
+/// PARTICIPANT: only the participant named in targetParticipantId (their
+///   own role, their own task state, etc).
 enum EventVisibility {
   PUBLIC
   ADMIN
   PROJECTOR
-  PLAYER
+  PARTICIPANT
+  /// all participants of the game + admin (moderation) — never the
+  /// projector/spectator. Used for chat only.
+  MEETING
 }
 
 /// The realtime + announcement feed. Every important thing that happens
@@ -528,8 +674,8 @@ model GameEvent {
   type       String
   visibility EventVisibility
 
-  /// required when visibility = PLAYER
-  targetPlayerId String?
+  /// required when visibility = PARTICIPANT
+  targetParticipantId String?
 
   payload Json
 
@@ -537,13 +683,13 @@ model GameEvent {
 
   @@index([gameId, sequenceNumber])
   @@index([gameId, visibility, createdAt])
-  @@index([gameId, targetPlayerId])
+  @@index([gameId, targetParticipantId])
 }
 
 enum ActorType {
   ADMIN
   SYSTEM
-  PLAYER
+  PARTICIPANT
 }
 
 model AuditLog {

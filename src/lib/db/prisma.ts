@@ -25,3 +25,19 @@ export const prisma = globalThis.__prisma ?? createClient();
 if (process.env.NODE_ENV !== "production") {
   globalThis.__prisma = prisma;
 }
+
+/**
+ * The same singleton, re-exported under a name that says "this call
+ * deliberately bypasses the RLS backstop." The Prisma connection role is a
+ * superuser, so every query on `prisma` already ignores the row policies
+ * added in Milestone 1 — `prismaInternal` is the marker for the call sites
+ * where that is the *intent* (OTP verification against `Task.otpHash`, role
+ * assignment across the whole roster, the realtime event publisher) rather
+ * than an oversight. Audience-scoped reads must instead go through
+ * `withAudienceContext` (src/lib/db/rlsContext.ts).
+ *
+ * When the first mutation path is moved under an audience-scoped
+ * transaction (Milestone 2), the matching `withInternalAccess(fn)` helper
+ * lands here alongside it; until then there is nothing for it to wrap.
+ */
+export const prismaInternal = prisma;

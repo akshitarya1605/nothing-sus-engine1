@@ -21,16 +21,16 @@ export async function publishEvent<T extends GameEventType>(
 ): Promise<void> {
   const visibility = EVENT_VISIBILITY[input.type];
 
-  if (visibility === "PLAYER" && !input.targetPlayerId) {
+  if (visibility === "PARTICIPANT" && !input.targetParticipantId) {
     throw new GameEngineError(
       "VALIDATION",
-      `Event ${input.type} requires targetPlayerId (visibility = PLAYER)`,
+      `Event ${input.type} requires targetParticipantId (visibility = PARTICIPANT)`,
     );
   }
-  if (visibility !== "PLAYER" && input.targetPlayerId) {
+  if (visibility !== "PARTICIPANT" && input.targetParticipantId) {
     throw new GameEngineError(
       "VALIDATION",
-      `Event ${input.type} must not set targetPlayerId (visibility = ${visibility})`,
+      `Event ${input.type} must not set targetParticipantId (visibility = ${visibility})`,
     );
   }
 
@@ -39,7 +39,7 @@ export async function publishEvent<T extends GameEventType>(
       gameId: input.gameId,
       type: input.type,
       visibility,
-      targetPlayerId: input.targetPlayerId ?? null,
+      targetParticipantId: input.targetParticipantId ?? null,
       payload: input.payload as Prisma.InputJsonValue,
     },
   });

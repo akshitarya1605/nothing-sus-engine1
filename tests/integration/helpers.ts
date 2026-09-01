@@ -1,15 +1,18 @@
 import { prisma } from "@/lib/db/prisma";
-import * as PlayersEngine from "@/lib/game/actions/players";
+import * as ParticipantsEngine from "@/lib/game/actions/participants";
+import { generateSecret } from "@/lib/auth/tokens";
 
-/** Creates a minimal real game (with config + one round + N players) in
+/** Creates a minimal real game (with config + one round + N participants) in
  * the actual test database. Integration tests exercise the engine
  * against real Postgres, not mocks — the whole point is proving
  * transactions, unique constraints, and query-level filtering actually
  * work, not just that the TypeScript compiles. */
-export async function createTestGame(playerCount = 6) {
+export async function createTestGame(participantCount = 6) {
   const game = await prisma.game.create({
     data: {
       name: `test-game-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      adminSecret: generateSecret(),
+      spectatorSecret: generateSecret(),
       config: { create: {} },
     },
   });
@@ -24,12 +27,12 @@ export async function createTestGame(playerCount = 6) {
     },
   });
 
-  const players = [];
-  for (let i = 0; i < playerCount; i++) {
-    players.push(await PlayersEngine.createPlayer(game.id, { displayName: `Player ${i}` }, prisma));
+  const participants = [];
+  for (let i = 0; i < participantCount; i++) {
+    participants.push(await ParticipantsEngine.createParticipant(game.id, { name: `Participant ${i}` }, prisma));
   }
 
-  return { game, round1, players };
+  return { game, round1, participants };
 }
 
 export async function cleanupTestGame(gameId: string) {
