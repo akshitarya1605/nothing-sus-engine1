@@ -8,7 +8,7 @@ declare global {
   var __prisma: PrismaClient | undefined;
 }
 
-function createClient() {
+function createClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error("DATABASE_URL is not set");
@@ -17,17 +17,28 @@ function createClient() {
   return new PrismaClient({ adapter });
 }
 
-// Reuse a single client across hot-reloads in dev so we don't exhaust
-// Postgres connections; a fresh client per Vercel serverless invocation
-// in production is expected and fine (each holds a small pg.Pool).
-export const prisma = globalThis.__prisma ?? createClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalThis.__prisma = prisma;
+/**
+ * Lazily constructed on first property access — so importing this module
+ * during `next build` (or in a route that never actually runs a query)
+ * doesn't require DATABASE_URL. Reuses one client across dev hot-reloads.
+ */
+function getClient(): PrismaClient {
+  if (globalThis.__prisma) return globalThis.__prisma;
+  const client = createClient();
+  if (process.env.NODE_ENV !== "production") globalThis.__prisma = client;
+  return client;
 }
 
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_t, prop) {
+    const client = getClient();
+    const value = Reflect.get(client, prop, client);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});
+
 /**
- * The same singleton, re-exported under a name that says "this call
+ * The same client, re-exported under a name that says "this call
  * deliberately bypasses the RLS backstop." The Prisma connection role is a
  * superuser, so every query on `prisma` already ignores the row policies
  * added in Milestone 1 — `prismaInternal` is the marker for the call sites
@@ -35,9 +46,5 @@ if (process.env.NODE_ENV !== "production") {
  * assignment across the whole roster, the realtime event publisher) rather
  * than an oversight. Audience-scoped reads must instead go through
  * `withAudienceContext` (src/lib/db/rlsContext.ts).
- *
- * When the first mutation path is moved under an audience-scoped
- * transaction (Milestone 2), the matching `withInternalAccess(fn)` helper
- * lands here alongside it; until then there is nothing for it to wrap.
  */
 export const prismaInternal = prisma;
