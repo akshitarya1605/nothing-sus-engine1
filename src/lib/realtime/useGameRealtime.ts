@@ -49,7 +49,9 @@ interface TokenResponse {
 export function useGameRealtime({ enabled, onEvent }: Options): { status: RealtimeStatus } {
   const [status, setStatus] = useState<RealtimeStatus>("connecting");
   const onEventRef = useRef(onEvent);
-  onEventRef.current = onEvent;
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
 
   const cursorRef = useRef<bigint>(BigInt(0));
 
@@ -74,12 +76,14 @@ export function useGameRealtime({ enabled, onEvent }: Options): { status: Realti
 
   useEffect(() => {
     if (!enabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reflecting a prop toggle into status
       setStatus("offline");
       return;
     }
 
     // realtime misconfigured — fall back to a slow poll so the app still works
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time fallback signal
       setStatus("reconnecting");
       void drain();
       const poll = setInterval(() => void drain(), 5000);
@@ -157,6 +161,7 @@ export function useGameRealtime({ enabled, onEvent }: Options): { status: Realti
     window.addEventListener("online", onOnline);
     document.addEventListener("visibilitychange", onVisible);
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial connecting state
     setStatus("connecting");
     void connect();
 

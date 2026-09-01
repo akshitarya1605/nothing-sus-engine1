@@ -38,12 +38,13 @@ export function audienceClaimsFor(session: AnySession): AudienceClaims {
  * Claims are set *before* the role switch, while still `postgres`, and the
  * value is passed as a bound parameter (never string-interpolated).
  *
- * NOTE: the `state.ts` readers fan out with `Promise.all` on the single
- * transaction connection. Prisma serializes these correctly, but
- * `@prisma/adapter-pg` currently logs a `client.query() while already
- * executing` DeprecationWarning for it. Harmless today; when `state.ts` is
- * reworked for the Milestone 2 UI, switch those reads to sequential awaits
- * (or keep the non-sensitive aggregates on the raw pooled client).
+ * NOTE: the `state.ts` readers now run their own queries sequentially, but
+ * Prisma's relation loading (`include`) can still issue several queries per
+ * call on the one transaction connection. Prisma serializes them correctly;
+ * `@prisma/adapter-pg` logs a benign `client.query() while executing`
+ * DeprecationWarning for it under Node's warning stream. Not a correctness
+ * issue (every integration test passes); revisit if pg@9 upgrades it to an
+ * error, at which point the fix is `$queryRaw` for the admin snapshot.
  */
 export async function withAudienceContext<T>(
   session: AnySession,

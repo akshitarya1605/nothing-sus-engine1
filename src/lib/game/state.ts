@@ -16,6 +16,22 @@ import { computeRoundTiming } from "./timers";
 type Queryable = PrismaClient | Prisma.TransactionClient;
 
 /**
+ * Run several reads strictly in sequence. These functions can be handed a
+ * transaction client (state.ts under `withAudienceContext`), where
+ * concurrent queries on the single connection are unsafe and
+ * `@prisma/adapter-pg` warns. At this app's scale the lost parallelism is
+ * a few ms on the admin snapshot — not worth branching on client type.
+ */
+async function gather<T extends readonly unknown[]>(
+  _db: Queryable,
+  thunks: { readonly [K in keyof T]: () => Promise<T[K]> },
+): Promise<T> {
+  const out: unknown[] = [];
+  for (const t of thunks) out.push(await t());
+  return out as unknown as T;
+}
+
+/**
  * The three data contracts from the brief. Each is the ONLY way its
  * respective client is allowed to read game state — nobody queries
  * `prisma.participant.findMany()` directly from a route handler. If a field
@@ -217,39 +233,43 @@ export async function getAdminGameState(
   const game = await prisma.game.findUnique({ where: { id: gameId }, include: { config: true } });
   if (!game) throw new GameEngineError("NOT_FOUND", "Game not found");
 
-  const [rounds, groups, participants, tasks, taskProgress, activeMeeting, auditLog] = await Promise.all([
-    prisma.round.findMany({ where: { gameId }, orderBy: { number: "asc" } }),
-    prisma.group.findMany({ where: { gameId }, orderBy: { name: "asc" } }),
-    prisma.participant.findMany({ where: { gameId }, orderBy: { name: "asc" }, include: { group: true } }),
-    prisma.task.findMany({
-      where: { gameId },
-      orderBy: { createdAt: "asc" },
-      include: {
-        round: true,
-        group: true,
-        participantTasks: { select: { status: true } },
-        taskAttempts: { select: { id: true } },
-      },
-    }),
-    computeGlobalTaskProgress(prisma, gameId),
-    prisma.meeting.findFirst({
-      where: { gameId, status: { not: MeetingStatus.REVEALED } },
-      orderBy: { createdAt: "desc" },
-      include: { votes: true },
-    }),
-    prisma.auditLog.findMany({ where: { gameId }, orderBy: { createdAt: "desc" }, take: 30 }),
+  const [rounds, groups, participants, tasks, taskProgress, activeMeeting, auditLog] = await gather(prisma, [
+    () => prisma.round.findMany({ where: { gameId }, orderBy: { number: "asc" } }),
+    () => prisma.group.findMany({ where: { gameId }, orderBy: { name: "asc" } }),
+    () => prisma.participant.findMany({ where: { gameId }, orderBy: { name: "asc" }, include: { group: true } }),
+    () =>
+      prisma.task.findMany({
+        where: { gameId },
+        orderBy: { createdAt: "asc" },
+        include: {
+          round: true,
+          group: true,
+          participantTasks: { select: { status: true } },
+          taskAttempts: { select: { id: true } },
+        },
+      }),
+    () => computeGlobalTaskProgress(prisma, gameId),
+    () =>
+      prisma.meeting.findFirst({
+        where: { gameId, status: { not: MeetingStatus.REVEALED } },
+        orderBy: { createdAt: "desc" },
+        include: { votes: true },
+      }),
+    () => prisma.auditLog.findMany({ where: { gameId }, orderBy: { createdAt: "desc" }, take: 30 }),
   ]);
 
   const aliveVoterCount = activeMeeting
     ? await prisma.participant.count({ where: { gameId, status: ParticipantStatus.ALIVE } })
     : 0;
 
-  const groupProgress = await Promise.all(
-    groups.map(async (g) => {
-      const [completed, inPlay, participantCount] = await Promise.all([
+  const groupProgress: AdminGameState["groups"] = [];
+  for (const g of groups) {
+    const [completed, inPlay, participantCount] = await gather(prisma, [
+      () =>
         prisma.participantTask.count({
           where: { status: "COMPLETED", task: { gameId }, participant: { groupId: g.id } },
         }),
+      () =>
         prisma.participantTask.count({
           where: {
             status: { in: ["AVAILABLE", "IN_PROGRESS", "COMPLETED"] },
@@ -257,20 +277,19 @@ export async function getAdminGameState(
             participant: { groupId: g.id },
           },
         }),
-        prisma.participant.count({ where: { gameId, groupId: g.id } }),
-      ]);
-      return {
-        id: g.id,
-        name: g.name,
-        participantCount,
-        taskProgress: {
-          completed,
-          inPlay,
-          percentage: inPlay === 0 ? 0 : Math.round((completed / inPlay) * 1000) / 10,
-        },
-      };
-    }),
-  );
+      () => prisma.participant.count({ where: { gameId, groupId: g.id } }),
+    ]);
+    groupProgress.push({
+      id: g.id,
+      name: g.name,
+      participantCount,
+      taskProgress: {
+        completed,
+        inPlay,
+        percentage: inPlay === 0 ? 0 : Math.round((completed / inPlay) * 1000) / 10,
+      },
+    });
+  }
 
   return {
     game: {
@@ -376,22 +395,23 @@ export async function getProjectorState(
     ? computeRoundTiming(round, game.config?.meetingAfterMinutes ?? 20)
     : null;
 
-  const [globalProgress, aliveCount, eliminatedCount, activeMeeting, events, result] =
-    await Promise.all([
-      computeGlobalTaskProgress(prisma, gameId),
-      prisma.participant.count({ where: { gameId, status: ParticipantStatus.ALIVE } }),
-      prisma.participant.count({ where: { gameId, status: ParticipantStatus.ELIMINATED } }),
+  const [globalProgress, aliveCount, eliminatedCount, activeMeeting, events, result] = await gather(prisma, [
+    () => computeGlobalTaskProgress(prisma, gameId),
+    () => prisma.participant.count({ where: { gameId, status: ParticipantStatus.ALIVE } }),
+    () => prisma.participant.count({ where: { gameId, status: ParticipantStatus.ELIMINATED } }),
+    () =>
       prisma.meeting.findFirst({
         where: { gameId, status: { not: MeetingStatus.REVEALED } },
         orderBy: { createdAt: "desc" },
       }),
+    () =>
       prisma.gameEvent.findMany({
         where: { gameId, visibility: EventVisibility.PUBLIC },
         orderBy: { sequenceNumber: "desc" },
         take: 20,
       }),
-      prisma.gameResult.findUnique({ where: { gameId } }),
-    ]);
+    () => prisma.gameResult.findUnique({ where: { gameId } }),
+  ]);
 
   // Latest role reveal (event is already PUBLIC; the name is not on the
   // payload, so look it up — projector never gets a roster otherwise).

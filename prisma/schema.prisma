@@ -710,3 +710,14 @@ model AuditLog {
   @@index([gameId, createdAt])
   @@index([gameId, action])
 }
+
+/// Fixed-window rate limiting for unauthenticated endpoints (participant
+/// login, secret-link exchange). One row per hit; the limiter prunes rows
+/// older than the window. Not on the realtime publication, no RLS.
+model RateLimitHit {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}

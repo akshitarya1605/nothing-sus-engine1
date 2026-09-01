@@ -3,6 +3,7 @@ import { z } from "zod";
 import { loginParticipant } from "@/lib/game/actions/participants";
 import { handleRoute, parseJsonBody } from "@/lib/api/respond";
 import { GameEngineError } from "@/lib/game/errors";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 
 const schema = z.object({ code: z.string().min(1) });
 
@@ -13,6 +14,13 @@ const schema = z.object({ code: z.string().min(1) });
  * docs/SECURITY.md "Single device session". */
 export async function POST(request: Request) {
   return handleRoute(async () => {
+    // 20 attempts / 5 min per IP — generous for a fat-fingered player,
+    // tight enough that brute-forcing the code space is hopeless.
+    const rl = await rateLimit(`login:${clientIp(request)}`, { limit: 20, windowSec: 300 });
+    if (!rl.ok) {
+      throw new GameEngineError("VALIDATION", `Too many attempts. Try again in ${rl.retryAfter}s.`);
+    }
+
     const { code } = await parseJsonBody(request, schema);
     const result = await loginParticipant(code.trim().toUpperCase());
 

@@ -11,10 +11,14 @@ try {
 // Used by the CLI (migrate, studio, db push, seed). The running app never
 // reads this file — it builds its own driver adapter in lib/db/prisma.ts
 // using the same DATABASE_URL.
+// Migrations and `prisma studio` need a NON-pooled connection. On a hosted
+// Supabase project DATABASE_URL points at the transaction pooler (pgbouncer),
+// which can't run DDL — so prefer DIRECT_URL for the CLI when it's set.
+// Locally only DATABASE_URL exists and this is a no-op.
 export default defineConfig({
   schema: "prisma/schema.prisma",
   datasource: {
-    url: env("DATABASE_URL"),
+    url: process.env.DIRECT_URL ? env("DIRECT_URL") : env("DATABASE_URL"),
   },
   migrations: {
     seed: "tsx --env-file=.env prisma/seed.ts",
