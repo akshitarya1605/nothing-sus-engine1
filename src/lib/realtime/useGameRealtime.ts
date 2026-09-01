@@ -91,8 +91,15 @@ export function useGameRealtime({ enabled, onEvent }: Options): { status: Realti
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let channel: RealtimeChannel | null = null;
 
+    // We drive auth manually via setAuth(); disable GoTrue's own storage +
+    // refresh so multiple mounts don't fight over one localStorage key.
     const client: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        storageKey: `ns-rt-${Math.random().toString(36).slice(2)}`,
+      },
     });
 
     const retry = (fn: () => void, ms: number) => {
