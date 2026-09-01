@@ -9,7 +9,7 @@ import { Panel } from "@/components/ui/Panel";
 import { Badge, RolePill, StatusPill } from "@/components/ui/Badge";
 import { ConnectionChip } from "@/components/ui/ConnectionChip";
 import { ProgressBar } from "@/components/ui/Progress";
-import { ConfirmModal } from "@/components/ui/Modal";
+import { ConfirmModal, Modal } from "@/components/ui/Modal";
 
 type State = AdminGameState;
 type Tab = "setup" | "run" | "monitor";
@@ -122,7 +122,7 @@ export default function ControlPage() {
 
         {tab === "setup" && <SetupTab state={state} call={call} notify={notify} />}
         {tab === "run" && <RunTab state={state} call={call} notify={notify} />}
-        {tab === "monitor" && <MonitorTab state={state} />}
+        {tab === "monitor" && <MonitorTab state={state} call={call} notify={notify} />}
       </div>
     </main>
   );
@@ -342,22 +342,26 @@ function RunTab({ state, call, notify }: { state: State; call: CallFn; notify: N
           >
             {state.game.status === "PAUSED" ? "Resume game" : "Pause game"}
           </Button>
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={() =>
-              setConfirm({
-                title: "Finish the game?",
-                body: "This ends the game and computes the winner. There's no undo.",
-                label: "Finish game",
-                action: () => call("/api/game/rounds/finish"),
-              })
-            }
-          >
-            Finish game
-          </Button>
+          {state.game.status === "ROUND_COMPLETE" && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() =>
+                setConfirm({
+                  title: "Finish the game?",
+                  body: "Ends the game and computes the winner from the win conditions. No undo.",
+                  label: "Finish game",
+                  action: () => call("/api/game/rounds/finish"),
+                })
+              }
+            >
+              Finish (auto winner)
+            </Button>
+          )}
         </div>
       </Panel>
+
+      <DeclareWinner state={state} call={call} notify={notify} />
 
       <Panel tone={m ? "danger" : "default"}>
         <h2 className="mb-3 font-display text-lg">Meeting &amp; voting</h2>
@@ -443,6 +447,81 @@ function RunTab({ state, call, notify }: { state: State; call: CallFn; notify: N
   );
 }
 
+function DeclareWinner({ state, call, notify }: { state: State; call: CallFn; notify: NotifyFn }) {
+  const [winner, setWinner] = useState<"ENGINEERS" | "IMPOSTERS" | "NONE" | null>(null);
+  const [reason, setReason] = useState("");
+  const [champion, setChampion] = useState("");
+  const finished = state.game.status === "FINISHED";
+
+  const OPTIONS: { key: "ENGINEERS" | "IMPOSTERS" | "NONE"; label: string; tone: string }[] = [
+    { key: "ENGINEERS", label: "🛠 Engineers win", tone: "border-cyan bg-cyan/15 text-cyan" },
+    { key: "IMPOSTERS", label: "🔪 Imposters win", tone: "border-red bg-red/15 text-red" },
+    { key: "NONE", label: "🤝 Draw / no winner", tone: "border-yellow bg-yellow/15 text-yellow" },
+  ];
+
+  return (
+    <Panel tone={winner ? "cyan" : "default"}>
+      <h2 className="mb-1 font-display text-lg">Declare the winner</h2>
+      <p className="mb-3 text-xs text-fg-faint">
+        Ends the game now with your call, from any state — overrides the automatic win conditions.
+      </p>
+      {finished ? (
+        <p className="text-sm text-fg-dim">Game is finished. See the projector for the result.</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-2">
+            {OPTIONS.map((o) => (
+              <button
+                key={o.key}
+                onClick={() => setWinner(winner === o.key ? null : o.key)}
+                className={cn(
+                  "rounded-pill border-[3px] px-4 py-2 font-display text-sm font-semibold uppercase",
+                  winner === o.key ? o.tone : "border-line-strong text-fg-dim",
+                )}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            maxLength={280}
+            placeholder="Reason shown on the projector (optional)"
+            className="rounded-pill border-[3px] border-ink bg-elevated px-4 py-2 text-sm outline-none focus:border-cyan"
+          />
+          <select
+            value={champion}
+            onChange={(e) => setChampion(e.target.value)}
+            className="rounded-lg border-[3px] border-ink bg-elevated px-3 py-2 text-sm"
+          >
+            <option value="">Spotlight one player (optional)…</option>
+            {state.participants.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="danger"
+            disabled={!winner}
+            onClick={async () => {
+              const r = await call("/api/game/declare-winner", {
+                winner,
+                reason: reason.trim() || undefined,
+                championParticipantId: champion || undefined,
+              });
+              if (r.ok !== false) notify("Winner declared — game over");
+            }}
+          >
+            End game & declare
+          </Button>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 function RevealRole({ call }: { call: CallFn }) {
   const [id, setId] = useState("");
   return (
@@ -471,7 +550,10 @@ function RevealRole({ call }: { call: CallFn }) {
 
 /* ================================================================= MONITOR */
 
-function MonitorTab({ state }: { state: State }) {
+function MonitorTab({ state, call, notify }: { state: State; call: CallFn; notify: NotifyFn }) {
+  const [dq, setDq] = useState<{ id: string; name: string } | null>(null);
+  const [dqReason, setDqReason] = useState("");
+
   return (
     <div className="flex flex-col gap-5">
       <Panel>
@@ -492,6 +574,7 @@ function MonitorTab({ state }: { state: State }) {
                 <th>Role</th>
                 <th>Status</th>
                 <th>Group</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -505,12 +588,78 @@ function MonitorTab({ state }: { state: State }) {
                     <StatusPill status={p.status} />
                   </td>
                   <td className="text-fg-dim">{p.groupName ?? "—"}</td>
+                  <td className="py-1 text-right">
+                    {p.status === "ALIVE" && (
+                      <button
+                        className="text-xs text-fg-faint"
+                        onClick={() => call("/api/game/eliminations/eliminate", { participantId: p.id })}
+                      >
+                        eliminate
+                      </button>
+                    )}
+                    {(p.status === "ELIMINATED" || p.status === "DISQUALIFIED") && (
+                      <button
+                        className="text-xs text-cyan"
+                        onClick={() => call("/api/game/participants/restore", { participantId: p.id })}
+                      >
+                        restore
+                      </button>
+                    )}
+                    {p.status !== "DISQUALIFIED" && (
+                      <>
+                        {" · "}
+                        <button
+                          className="text-xs text-yellow"
+                          onClick={() => {
+                            setDqReason("");
+                            setDq({ id: p.id, name: p.name });
+                          }}
+                        >
+                          disqualify
+                        </button>
+                      </>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </Panel>
+
+      <Modal open={!!dq} onClose={() => setDq(null)} title={`Disqualify ${dq?.name}?`}>
+        <p className="mb-3 text-sm text-fg-dim">
+          Removes them from the game entirely. They stop counting toward the win. This is not the same
+          as an in-game elimination.
+        </p>
+        <input
+          value={dqReason}
+          onChange={(e) => setDqReason(e.target.value)}
+          placeholder="Reason (optional, shown in the feed)"
+          maxLength={280}
+          className="mb-3 w-full rounded-pill border-[3px] border-ink bg-elevated px-4 py-2 text-sm outline-none focus:border-cyan"
+        />
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="ghost" onClick={() => setDq(null)}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            variant="danger"
+            onClick={async () => {
+              const t = dq!;
+              setDq(null);
+              await call("/api/game/participants/disqualify", {
+                participantId: t.id,
+                reason: dqReason.trim() || undefined,
+              });
+              notify(`${t.name} disqualified`);
+            }}
+          >
+            Disqualify
+          </Button>
+        </div>
+      </Modal>
 
       <Panel>
         <h2 className="mb-3 font-display text-lg">Tasks</h2>

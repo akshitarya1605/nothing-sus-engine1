@@ -77,6 +77,61 @@ export async function eliminateParticipant(
   return prisma.$transaction((tx) => eliminateParticipantTx(tx, gameId, input));
 }
 
+/**
+ * Host removes a player from the game entirely (cheating, no-show, left
+ * early). Distinct from an in-game elimination: status becomes
+ * DISQUALIFIED, which the win-condition counts (ALIVE only) ignore, and it
+ * fires no role-reveal. Works from any status ALIVE or ELIMINATED.
+ */
+export async function disqualifyParticipant(
+  gameId: string,
+  input: { participantId: string; reason?: string; actorId: string | null },
+  prisma: PrismaClient = defaultPrisma,
+) {
+  return prisma.$transaction(async (tx) => {
+    const participant = await tx.participant.findUnique({ where: { id: input.participantId } });
+    if (!participant || participant.gameId !== gameId) {
+      throw new GameEngineError("NOT_FOUND", "Participant not found");
+    }
+    if (participant.status === ParticipantStatus.DISQUALIFIED) {
+      throw new GameEngineError("CONFLICT", "Participant is already disqualified");
+    }
+
+    await tx.participant.update({
+      where: { id: participant.id },
+      data: { status: ParticipantStatus.DISQUALIFIED },
+    });
+
+    const elimination = await tx.elimination.create({
+      data: {
+        gameId,
+        participantId: participant.id,
+        method: EliminationMethod.DISQUALIFIED,
+        roleRevealStatus: RoleRevealStatus.REVEALED, // no reveal moment for a DQ
+        revealedAt: new Date(),
+      },
+    });
+
+    await writeAuditLog(tx, {
+      gameId,
+      actorType: ActorType.ADMIN,
+      actorId: input.actorId,
+      action: "participant_disqualified",
+      targetType: "Participant",
+      targetId: participant.id,
+      metadata: { reason: input.reason ?? null },
+    });
+
+    await publishEvent(tx, {
+      gameId,
+      type: "PLAYER_DISQUALIFIED",
+      payload: { participantId: participant.id, name: participant.name, reason: input.reason ?? null },
+    });
+
+    return elimination;
+  });
+}
+
 /** Admin-triggered role reveal — the ONLY place ROLE_REVEALED (which
  * carries the actual role, PUBLIC visibility) is published. */
 export async function revealRole(

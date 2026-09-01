@@ -22,7 +22,9 @@ interface ProjectorState {
   votingState: { isOpen: boolean } | null;
   recentPublicEvents: FeedEvent[];
   eliminationReveal: { participantId: string; name: string; role: "ENGINEER" | "IMPOSTER" } | null;
-  finalResult: { winner: string; reason: string; stats: unknown } | null;
+  finalResult:
+    | { winner: string; reason: string; stats: unknown; declaredByHost: boolean; championName: string | null }
+    | null;
 }
 
 export default function SpectatorPage() {
@@ -212,8 +214,13 @@ function MeetingScreen({ state }: { state: ProjectorState }) {
 
 /* ------------------------------------------------------------------ */
 
-function WinnerScreen({ result }: { result: { winner: string; reason: string } }) {
+function WinnerScreen({
+  result,
+}: {
+  result: { winner: string; reason: string; declaredByHost: boolean; championName: string | null };
+}) {
   const imposters = result.winner.toUpperCase().includes("IMPOSTER");
+  const draw = result.winner.toUpperCase() === "NONE";
   return (
     <main
       className={cn(
@@ -229,16 +236,26 @@ function WinnerScreen({ result }: { result: { winner: string; reason: string } }
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", stiffness: 200, damping: 16 }}
         >
-          <p className="text-[10vw]">{imposters ? "🔪" : "🛠"}</p>
+          <p className="text-[10vw]">{draw ? "🤝" : imposters ? "🔪" : "🛠"}</p>
           <h1
             className={cn(
               "ns-outline font-display text-[8vw] font-bold uppercase leading-none",
-              imposters ? "text-red" : "text-cyan",
+              draw ? "text-yellow" : imposters ? "text-red" : "text-cyan",
             )}
           >
-            {result.winner} win
+            {draw ? "It's a draw" : `${result.winner} win`}
           </h1>
-          <p className="font-display text-[2.4vw] text-fg-dim">{result.reason}</p>
+          <p className="max-w-[70vw] font-display text-[2.4vw] text-fg-dim">{result.reason}</p>
+          {result.championName && (
+            <p className="mt-2 font-display text-[3vw] font-bold text-yellow">
+              ⭐ {result.championName}
+            </p>
+          )}
+          {result.declaredByHost && (
+            <p className="font-display text-[1.2vw] uppercase tracking-[0.3em] text-fg-faint">
+              Called by the host
+            </p>
+          )}
         </motion.div>
       </AnimatePresence>
     </main>

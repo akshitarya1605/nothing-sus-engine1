@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { GameStatus, RoundStatus, RoundPhase, ParticipantStatus } from "@prisma/client";
 import { prisma as defaultPrisma } from "../../db/prisma";
 import { GameEngineError } from "../errors";
@@ -198,6 +198,71 @@ export async function completeRound(gameId: string, prisma: PrismaClient = defau
  * than a generic rule engine — see docs/GAME_ENGINE.md "Win conditions"
  * for what each configured value means.
  */
+type Winner = "ENGINEERS" | "IMPOSTERS" | "NONE";
+
+/** Shared finalization — round cleanup, result row, GAME_FINISHED event.
+ * `finishGame` computes the winner from the win conditions; `declareWinner`
+ * passes the host's choice straight through. */
+async function finalizeGameTx(
+  tx: Prisma.TransactionClient,
+  gameId: string,
+  winner: Winner,
+  reason: string,
+  opts: { declaredByHost: boolean; championParticipantId?: string | null; actorId?: string | null },
+) {
+  const [aliveEngineers, aliveImposters, totalTasks, completedTasks] = await Promise.all([
+    tx.participant.count({ where: { gameId, status: ParticipantStatus.ALIVE, role: "ENGINEER" } }),
+    tx.participant.count({ where: { gameId, status: ParticipantStatus.ALIVE, role: "IMPOSTER" } }),
+    tx.participantTask.count({ where: { task: { gameId }, status: { not: "LOCKED" } } }),
+    tx.participantTask.count({ where: { task: { gameId }, status: "COMPLETED" } }),
+  ]);
+
+  const topScorer = await tx.participantTask.groupBy({
+    by: ["participantId"],
+    where: { task: { gameId }, status: "COMPLETED" },
+    _sum: { score: true },
+    orderBy: { _sum: { score: "desc" } },
+    take: 2,
+  });
+
+  await tx.round.updateMany({
+    where: { gameId, status: { not: RoundStatus.COMPLETE } },
+    data: { status: RoundStatus.COMPLETE, endedAt: new Date() },
+  });
+
+  await tx.game.update({ where: { id: gameId }, data: { status: GameStatus.FINISHED } });
+
+  await tx.gameResult.upsert({
+    where: { gameId },
+    update: {
+      winner,
+      reason,
+      declaredByHost: opts.declaredByHost,
+      championParticipantId: opts.championParticipantId ?? null,
+    },
+    create: {
+      gameId,
+      winner,
+      reason,
+      declaredByHost: opts.declaredByHost,
+      championParticipantId: opts.championParticipantId ?? null,
+      topScorerParticipantId: topScorer[0]?.participantId,
+      runnerUpParticipantId: topScorer[1]?.participantId,
+      stats: { aliveEngineers, aliveImposters, totalTasks, completedTasks },
+    },
+  });
+
+  await writeAuditLog(tx, {
+    gameId,
+    actorType: ActorType.ADMIN,
+    actorId: opts.actorId ?? "admin",
+    action: opts.declaredByHost ? "winner_declared" : "game_finished",
+    metadata: { winner, reason, declaredByHost: opts.declaredByHost },
+  });
+
+  await publishEvent(tx, { gameId, type: "GAME_FINISHED", payload: { winner, reason } });
+}
+
 export async function finishGame(gameId: string, prisma: PrismaClient = defaultPrisma) {
   return prisma.$transaction(async (tx) => {
     const game = await tx.game.findUnique({ where: { id: gameId }, include: { config: true } });
@@ -211,7 +276,7 @@ export async function finishGame(gameId: string, prisma: PrismaClient = defaultP
       tx.participantTask.count({ where: { task: { gameId }, status: "COMPLETED" } }),
     ]);
 
-    let winner: "ENGINEERS" | "IMPOSTERS" | "NONE" = "NONE";
+    let winner: Winner = "NONE";
     let reason: string;
 
     if (aliveImposters === 0) {
@@ -228,46 +293,42 @@ export async function finishGame(gameId: string, prisma: PrismaClient = defaultP
       reason = "Final round ended without a decisive condition being met.";
     }
 
-    const topScorer = await tx.participantTask.groupBy({
-      by: ["participantId"],
-      where: { task: { gameId }, status: "COMPLETED" },
-      _sum: { score: true },
-      orderBy: { _sum: { score: "desc" } },
-      take: 2,
+    await finalizeGameTx(tx, gameId, winner, reason, { declaredByHost: false });
+  });
+}
+
+/**
+ * Host override — ends the game NOW with an outcome the host chooses,
+ * from any non-finished state (skips the state-graph edge check that
+ * `finishGame` enforces). Optionally spotlights one player as the winner.
+ */
+export async function declareWinner(
+  gameId: string,
+  input: { winner: Winner; reason?: string; championParticipantId?: string | null; actorId?: string | null },
+  prisma: PrismaClient = defaultPrisma,
+) {
+  return prisma.$transaction(async (tx) => {
+    const game = await tx.game.findUnique({ where: { id: gameId } });
+    if (!game) throw new GameEngineError("NOT_FOUND", "Game not found");
+    if (game.status === GameStatus.FINISHED) {
+      throw new GameEngineError("CONFLICT", "Game is already finished");
+    }
+
+    if (input.championParticipantId) {
+      const champ = await tx.participant.findUnique({ where: { id: input.championParticipantId } });
+      if (!champ || champ.gameId !== gameId) {
+        throw new GameEngineError("NOT_FOUND", "Champion player not found in this game");
+      }
+    }
+
+    const label = { ENGINEERS: "Engineers", IMPOSTERS: "Imposters", NONE: "Nobody" }[input.winner];
+    const reason = input.reason?.trim() || `${label} declared the winner by the host.`;
+
+    await finalizeGameTx(tx, gameId, input.winner, reason, {
+      declaredByHost: true,
+      championParticipantId: input.championParticipantId ?? null,
+      actorId: input.actorId ?? "admin",
     });
-
-    await tx.round.updateMany({
-      where: { gameId, status: { not: RoundStatus.COMPLETE } },
-      data: { status: RoundStatus.COMPLETE, endedAt: new Date() },
-    });
-
-    await tx.game.update({ where: { id: gameId }, data: { status: GameStatus.FINISHED } });
-
-    await tx.gameResult.create({
-      data: {
-        gameId,
-        winner,
-        reason,
-        topScorerParticipantId: topScorer[0]?.participantId,
-        runnerUpParticipantId: topScorer[1]?.participantId,
-        stats: {
-          aliveEngineers,
-          aliveImposters,
-          totalTasks,
-          completedTasks,
-        },
-      },
-    });
-
-    await writeAuditLog(tx, {
-      gameId,
-      actorType: ActorType.ADMIN,
-      actorId: "admin",
-      action: "game_finished",
-      metadata: { winner, reason },
-    });
-
-    await publishEvent(tx, { gameId, type: "GAME_FINISHED", payload: { winner, reason } });
   });
 }
 

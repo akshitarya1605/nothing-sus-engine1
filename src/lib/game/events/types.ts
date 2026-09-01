@@ -22,6 +22,7 @@ export const GAME_EVENT_TYPES = [
   "PLAYER_JOINED",
   "PLAYER_ELIMINATED",
   "PLAYER_RESTORED",
+  "PLAYER_DISQUALIFIED",
   "PLAYER_LOCATION_CHANGED",
 
   "MEETING_STARTED",
@@ -61,6 +62,7 @@ export interface GameEventPayloads {
   PLAYER_JOINED: { participantId: string; name: string };
   PLAYER_ELIMINATED: { participantId: string; name: string; status: "ELIMINATED" };
   PLAYER_RESTORED: { participantId: string; name: string; status: "ALIVE" };
+  PLAYER_DISQUALIFIED: { participantId: string; name: string; reason: string | null };
   PLAYER_LOCATION_CHANGED: { participantId: string; locationId: string; locationName: string };
 
   MEETING_STARTED: { meetingId: string; type: string; reason: string | null };
@@ -106,6 +108,7 @@ export const EVENT_VISIBILITY: Record<GameEventType, EventVisibility> = {
   PLAYER_JOINED: EventVisibility.ADMIN,
   PLAYER_ELIMINATED: EventVisibility.PUBLIC,
   PLAYER_RESTORED: EventVisibility.PUBLIC,
+  PLAYER_DISQUALIFIED: EventVisibility.PUBLIC,
   PLAYER_LOCATION_CHANGED: EventVisibility.ADMIN,
 
   MEETING_STARTED: EventVisibility.PUBLIC,

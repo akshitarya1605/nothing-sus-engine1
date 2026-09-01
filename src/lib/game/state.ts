@@ -371,7 +371,9 @@ export interface ProjectorState {
   /** The most recent role reveal, for the projector's reveal animation.
    * Derived from the already-public ROLE_REVEALED event + a name lookup. */
   eliminationReveal: { participantId: string; name: string; role: "ENGINEER" | "IMPOSTER" } | null;
-  finalResult: { winner: string; reason: string; stats: unknown } | null;
+  finalResult:
+    | { winner: string; reason: string; stats: unknown; declaredByHost: boolean; championName: string | null }
+    | null;
 }
 
 /** The projector never touches Participant, Vote, or role tables directly —
@@ -452,7 +454,18 @@ export async function getProjectorState(
     })),
     eliminationReveal,
     finalResult: result
-      ? { winner: result.winner, reason: result.reason, stats: result.stats }
+      ? {
+          winner: result.winner,
+          reason: result.reason,
+          stats: result.stats,
+          declaredByHost: result.declaredByHost,
+          championName: result.championParticipantId
+            ? ((await prismaInternal.participant.findUnique({
+                where: { id: result.championParticipantId },
+                select: { name: true },
+              }))?.name ?? null)
+            : null,
+        }
       : null,
   };
 }

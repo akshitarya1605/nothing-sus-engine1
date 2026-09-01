@@ -250,7 +250,8 @@ function ConsoleBody({
   call: CallFn;
   refreshChat: (mid: string) => void;
 }) {
-  const eliminated = state.ownStatus === "ELIMINATED";
+  const disqualified = state.ownStatus === "DISQUALIFIED";
+  const eliminated = state.ownStatus === "ELIMINATED" || disqualified;
   const inMeeting = state.meetingStatus === "ACTIVE" || state.meetingStatus === "VOTING";
   const preGame = !state.round || state.game.status === "SETUP" || state.game.status === "READY";
 
@@ -281,7 +282,7 @@ function ConsoleBody({
     );
   }
 
-  if (eliminated) return <GhostView state={state} />;
+  if (eliminated) return <GhostView state={state} disqualified={disqualified} />;
   if (inMeeting) {
     return (
       <MeetingView state={state} chat={chat} meetingId={meetingId} call={call} refreshChat={refreshChat} />
@@ -633,7 +634,7 @@ function MeetingView({
 
 /* ------------------------------------------------------------------ */
 
-function GhostView({ state }: { state: ParticipantState }) {
+function GhostView({ state, disqualified }: { state: ParticipantState; disqualified?: boolean }) {
   const feed: FeedEvent[] = state.notifications
     .filter((n) => n.type !== "YOUR_ROLE_ASSIGNED")
     .map((n) => ({ id: n.id, type: n.type, payload: n.payload, createdAt: n.createdAt }));
@@ -641,11 +642,14 @@ function GhostView({ state }: { state: ParticipantState }) {
   return (
     <div className="flex flex-col gap-4">
       <Panel tone="danger" className="flex flex-col items-center gap-2 py-8 text-center">
-        <p className="text-5xl">👻</p>
-        <h2 className="text-2xl text-red">You were eliminated</h2>
+        <p className="text-5xl">{disqualified ? "🚫" : "👻"}</p>
+        <h2 className="text-2xl text-red">
+          {disqualified ? "You were removed from the game" : "You were eliminated"}
+        </h2>
         <p className="text-fg-dim">
-          You were {state.ownRole === "IMPOSTER" ? "an Imposter" : "an Engineer"}. Keep watching — no
-          talking to the living.
+          {disqualified
+            ? "The host took you out of this game. Talk to them if you think that's a mistake."
+            : `You were ${state.ownRole === "IMPOSTER" ? "an Imposter" : "an Engineer"}. Keep watching — no talking to the living.`}
         </p>
       </Panel>
       <TaskProgress {...state.ownProgress} />

@@ -43,6 +43,7 @@ export function RolePill({ role }: { role: "ENGINEER" | "IMPOSTER" | string | nu
 /** Alive / eliminated status pill. */
 export function StatusPill({ status }: { status: string | null | undefined }) {
   if (status === "ELIMINATED") return <Badge tone="red">Eliminated</Badge>;
+  if (status === "DISQUALIFIED") return <Badge tone="yellow">Disqualified</Badge>;
   if (status === "SPECTATOR") return <Badge tone="purple">Spectator</Badge>;
   return <Badge tone="green">Alive</Badge>;
 }

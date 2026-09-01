@@ -46,6 +46,17 @@ export const revealRoleSchema = z.object({
   eliminationId: z.string().min(1),
 });
 
+export const disqualifyParticipantSchema = z.object({
+  participantId: z.string().min(1),
+  reason: z.string().max(280).optional(),
+});
+
+export const declareWinnerSchema = z.object({
+  winner: z.enum(["ENGINEERS", "IMPOSTERS", "NONE"]),
+  reason: z.string().max(280).optional(),
+  championParticipantId: z.string().min(1).nullable().optional(),
+});
+
 export const configureRolesSchema = z.object({
   imposterCount: z.number().int().min(0),
 });

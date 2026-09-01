@@ -19,6 +19,8 @@ export function eventText(type: string, payload: unknown): string {
       return `${p.name ?? "A player"} was eliminated`;
     case "PLAYER_RESTORED":
       return `${p.name ?? "A player"} was brought back`;
+    case "PLAYER_DISQUALIFIED":
+      return `${p.name ?? "A player"} was disqualified${p.reason ? ` — ${p.reason}` : ""}`;
     case "MEETING_STARTED":
       return "🚨 Emergency meeting called";
     case "VOTING_STARTED":

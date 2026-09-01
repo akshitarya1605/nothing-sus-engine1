@@ -138,6 +138,12 @@ model GameResult {
   runnerUpParticipantId  String?
   stats                  Json
 
+  /// true when the host declared the outcome rather than the engine
+  /// computing it from the win conditions
+  declaredByHost Boolean @default(false)
+  /// optional single player the host spotlighted as the winner
+  championParticipantId String?
+
   finishedAt DateTime @default(now())
 }
 
@@ -262,6 +268,9 @@ enum ParticipantStatus {
   ALIVE
   ELIMINATED
   SPECTATOR
+  /// removed by the host (cheating, left early). Excluded from win-condition
+  /// counts, which only look at ALIVE.
+  DISQUALIFIED
 }
 
 enum ParticipantRole {
@@ -568,6 +577,7 @@ enum EliminationMethod {
   VOTE
   ADMIN
   ABILITY
+  DISQUALIFIED
 }
 
 enum RoleRevealStatus {

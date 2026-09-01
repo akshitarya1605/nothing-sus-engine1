@@ -203,3 +203,59 @@ describe("elimination", () => {
     await expect(EliminationsEngine.revealRole(game.id, elimination.id, prisma)).rejects.toThrow(GameEngineError);
   });
 });
+
+describe("host overrides", () => {
+  it("disqualify removes a player from the win-condition math", async () => {
+    const { game, participants } = await createTestGame(4);
+    cleanupIds.push(game.id);
+    await ParticipantsEngine.assignRoles(game.id, 1, prisma);
+    await ParticipantsEngine.lockRoles(game.id, prisma);
+
+    await EliminationsEngine.disqualifyParticipant(
+      game.id,
+      { participantId: participants[0].id, reason: "left early", actorId: "admin" },
+      prisma,
+    );
+    const p = await prisma.participant.findUniqueOrThrow({ where: { id: participants[0].id } });
+    expect(p.status).toBe("DISQUALIFIED");
+
+    // second disqualify is a conflict, not a second record
+    await expect(
+      EliminationsEngine.disqualifyParticipant(
+        game.id,
+        { participantId: participants[0].id, actorId: "admin" },
+        prisma,
+      ),
+    ).rejects.toThrow(GameEngineError);
+
+    const dqCount = await prisma.participant.count({ where: { gameId: game.id, status: "DISQUALIFIED" } });
+    expect(dqCount).toBe(1);
+  });
+
+  it("declareWinner ends the game with the host's choice from any state", async () => {
+    const { game, participants } = await createTestGame(4);
+    cleanupIds.push(game.id);
+    await ParticipantsEngine.assignRoles(game.id, 1, prisma);
+    await ParticipantsEngine.lockRoles(game.id, prisma);
+    await RoundsEngine.markGameReady(game.id, prisma);
+    await RoundsEngine.startRound(game.id, 1, prisma);
+
+    await RoundsEngine.declareWinner(
+      game.id,
+      { winner: "IMPOSTERS", reason: "call it", championParticipantId: participants[1].id, actorId: "admin" },
+      prisma,
+    );
+
+    const g = await prisma.game.findUniqueOrThrow({ where: { id: game.id } });
+    expect(g.status).toBe("FINISHED");
+    const result = await prisma.gameResult.findUniqueOrThrow({ where: { gameId: game.id } });
+    expect(result.winner).toBe("IMPOSTERS");
+    expect(result.declaredByHost).toBe(true);
+    expect(result.championParticipantId).toBe(participants[1].id);
+
+    // idempotency — already finished
+    await expect(
+      RoundsEngine.declareWinner(game.id, { winner: "ENGINEERS", actorId: "admin" }, prisma),
+    ).rejects.toThrow(GameEngineError);
+  });
+});
