@@ -17,7 +17,7 @@ export default function PrintCardsPage() {
 
   useEffect(() => {
     setOrigin(window.location.origin);
-    fetch("/api/game/state", { cache: "no-store" })
+    fetch("/api/game/state?as=ADMIN", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((s) => setPlayers(s?.participants ?? null));
   }, []);

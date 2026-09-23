@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAnySession } from "@/lib/auth/session";
+import { getSessionAs } from "@/lib/auth/session";
 import { mintRealtimeToken } from "@/lib/realtime/token";
 import { GameEngineError } from "@/lib/game/errors";
 import { handleRoute } from "@/lib/api/respond";
@@ -12,9 +12,10 @@ export const dynamic = "force-dynamic";
  * (opaque, cookie-backed) session — no body, nothing persisted. The client
  * calls this on mount and again whenever the socket needs to reconnect.
  */
-export async function GET() {
+export async function GET(request: Request) {
   return handleRoute(async () => {
-    const session = await getAnySession();
+    const as = new URL(request.url).searchParams.get("as");
+    const session = await getSessionAs(as);
     if (!session) throw new GameEngineError("UNAUTHENTICATED", "No active session");
 
     const minted = await mintRealtimeToken(session);

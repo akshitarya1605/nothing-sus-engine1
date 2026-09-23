@@ -13,9 +13,11 @@ import { TasksSection } from "./components/TasksSection/TasksSection";
 import { MeetingSection } from "./components/MeetingSection/MeetingSection";
 import { FinalCTA } from "./components/FinalCTA/FinalCTA";
 import { Footer } from "./components/Footer/Footer";
+import { IsaHeader } from "@/components/ui/IsaHeader";
+import { StudentAuthModal } from "@/components/auth/StudentAuthModal";
+import { IntegratedGameModal } from "@/components/game/IntegratedGameModal";
 import "./landing-app.css";
 
-// WebGL + canvas — client only, and kept out of the initial bundle.
 const CharacterSection = dynamic(
   () => import("./components/CharacterSection/CharacterSection").then((m) => m.CharacterSection),
   { ssr: false, loading: () => <div className="character-section-fallback" /> },
@@ -26,10 +28,14 @@ const IntroAnimation = dynamic(
 );
 
 const INTRO_SEEN_KEY = "nothingSusIntroSeen";
-// Relative link — the participant console lives in this same app now.
-const PARTICIPANT_URL = "/play";
 
 type Phase = "intro" | "site";
+
+interface UserAccount {
+  name: string;
+  collegeRegId: string;
+  code: string;
+}
 
 ensureGsapRegistered();
 
@@ -37,14 +43,22 @@ export function LandingApp() {
   const reducedMotion = usePrefersReducedMotion();
   const starFieldRef = useRef<StarFieldHandle | null>(null);
   const [siteVisible, setSiteVisible] = useState(false);
+  const [userAccount, setUserAccount] = useState<UserAccount | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showGameModal, setShowGameModal] = useState(false);
 
-  // Start in "intro" always on the server; correct to "site" on mount if
-  // the intro has already been seen this session (avoids a hydration
-  // mismatch on sessionStorage).
-  const [phase, setPhase] = useState<Phase>("intro");
+  const [phase, setPhase] = useState<Phase>("site");
+
   useEffect(() => {
     try {
-      if (sessionStorage.getItem(INTRO_SEEN_KEY)) setPhase("site");
+      const saved = localStorage.getItem("isa_student_account");
+      if (saved) {
+        setUserAccount(JSON.parse(saved));
+      } else {
+        // Student prompt to register / log in before entering match
+        const timer = setTimeout(() => setShowAuthModal(true), 1200);
+        return () => clearTimeout(timer);
+      }
     } catch {
       /* ignore */
     }
@@ -62,7 +76,6 @@ export function LandingApp() {
     }
   }, [phase]);
 
-  // smooth scroll, kept in sync with ScrollTrigger
   useEffect(() => {
     if (phase !== "site" || reducedMotion) return;
 
@@ -88,6 +101,23 @@ export function LandingApp() {
     setPhase("site");
   };
 
+  const handleAccountCreated = (acc: UserAccount) => {
+    setUserAccount(acc);
+    try {
+      localStorage.setItem("isa_student_account", JSON.stringify(acc));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleOpenGameConsole = () => {
+    if (!userAccount) {
+      setShowAuthModal(true);
+    } else {
+      setShowGameModal(true);
+    }
+  };
+
   return (
     <div className="app-root">
       <StarField ref={starFieldRef} reducedMotion={reducedMotion} />
@@ -102,7 +132,12 @@ export function LandingApp() {
 
       {phase === "site" && (
         <div className={`main-site${siteVisible ? " is-visible" : ""}`}>
-          <Navbar participantUrl={PARTICIPANT_URL} />
+          <IsaHeader />
+          <Navbar
+            onOpenGameConsole={handleOpenGameConsole}
+            onOpenAccountModal={() => setShowAuthModal(true)}
+            userAccount={userAccount}
+          />
           <Hero />
 
           <TextMorphSection
@@ -146,9 +181,24 @@ export function LandingApp() {
             distancePerLine={700}
           />
 
-          <FinalCTA participantUrl={PARTICIPANT_URL} />
+          <FinalCTA participantUrl="/join" />
 
           <Footer />
+
+          {/* Student Auth Modal */}
+          <StudentAuthModal
+            open={showAuthModal}
+            onClose={() => setShowAuthModal(false)}
+            onAccountCreated={handleAccountCreated}
+            currentAccount={userAccount}
+          />
+
+          {/* Integrated Game Console Modal */}
+          <IntegratedGameModal
+            open={showGameModal}
+            onClose={() => setShowGameModal(false)}
+            userAccount={userAccount}
+          />
         </div>
       )}
     </div>

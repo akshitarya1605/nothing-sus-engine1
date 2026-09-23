@@ -1,7 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { ParticipantRole, ParticipantStatus } from "@prisma/client";
 import { randomInt } from "node:crypto";
-import { prisma as defaultPrisma } from "../../db/prisma";
+import { prismaWrite as defaultPrisma } from "../../db/prisma";
 import { GameEngineError } from "../errors";
 import { writeAuditLog, ActorType } from "../audit";
 import { publishEvent } from "../events/publisher";
@@ -235,7 +235,7 @@ export interface LoginResult {
 }
 export interface LoginBlocked {
   ok: false;
-  reason: "ALREADY_ACTIVE" | "INVALID_CODE";
+  reason: "ALREADY_ACTIVE" | "INVALID_CODE" | "NOT_APPROVED";
 }
 
 /**
@@ -246,16 +246,51 @@ export interface LoginBlocked {
  * first device's session.
  */
 export async function loginParticipant(
-  code: string,
-  prisma: PrismaClient = defaultPrisma,
+  credential: string,
+  roomCodeOrPrisma?: string | PrismaClient,
+  maybePrisma?: PrismaClient,
 ): Promise<LoginResult | LoginBlocked> {
-  const participant = await prisma.participant.findUnique({ where: { code } });
+  const roomCode = typeof roomCodeOrPrisma === "string" ? roomCodeOrPrisma : undefined;
+  const prisma =
+    typeof roomCodeOrPrisma === "string"
+      ? (maybePrisma ?? defaultPrisma)
+      : (roomCodeOrPrisma ?? defaultPrisma);
+
+  const query = credential.trim().toUpperCase();
+  let participant = await prisma.participant.findUnique({ where: { code: query } });
+  if (!participant) {
+    participant = await prisma.participant.findFirst({ where: { collegeRegId: query } });
+  }
   if (!participant) return { ok: false, reason: "INVALID_CODE" };
+
+  if (!participant.isApproved) {
+    return { ok: false, reason: "NOT_APPROVED" };
+  }
+
+  // If roomCode provided, link participant to that game room
+  if (roomCode) {
+    const formattedRoom = roomCode.trim().toUpperCase();
+    const game = await prisma.game.findFirst({
+      where: {
+        OR: [{ roomCode: formattedRoom }, { adminSecret: formattedRoom }],
+      },
+    });
+    if (game && participant.gameId !== game.id) {
+      participant = await prisma.participant.update({
+        where: { id: participant.id },
+        data: { gameId: game.id },
+      });
+    }
+  }
 
   const activeSession = await prisma.participantSession.findFirst({
     where: { participantId: participant.id, revokedAt: null, expiresAt: { gt: new Date() } },
   });
-  if (activeSession) return { ok: false, reason: "ALREADY_ACTIVE" };
+  if (activeSession) {
+    // If same session exists, allow re-use or refresh
+    await createParticipantSession(participant.id);
+    return { ok: true, participantId: participant.id, name: participant.name };
+  }
 
   await createParticipantSession(participant.id);
   return { ok: true, participantId: participant.id, name: participant.name };
@@ -439,3 +474,53 @@ export async function restoreParticipant(gameId: string, participantId: string, 
     });
   });
 }
+
+/**
+ * Admin batch PIN generator — creates numeric PIN codes (e.g. 1042)
+ * and assigns sequential Wearable Player Numbers (#01 - #30).
+ */
+export async function generateBatchPINs(
+  gameId: string,
+  input: { count: number; batchNumber: number },
+  prisma: PrismaClient = defaultPrisma,
+) {
+  return prisma.$transaction(async (tx) => {
+    const existingCount = await tx.participant.count({
+      where: { gameId, batchNumber: input.batchNumber },
+    });
+
+    const created = [];
+    for (let i = 1; i <= input.count; i++) {
+      const playerNum = existingCount + i;
+      let pin = String(randomInt(1000, 9999));
+      for (let attempts = 0; attempts < 5; attempts++) {
+        const dup = await tx.participant.findUnique({ where: { code: pin } });
+        if (!dup) break;
+        pin = String(randomInt(1000, 9999));
+      }
+
+      const p = await tx.participant.create({
+        data: {
+          gameId,
+          code: pin,
+          name: `Player #${playerNum}`,
+          playerNumber: playerNum,
+          batchNumber: input.batchNumber,
+          status: ParticipantStatus.ALIVE,
+        },
+      });
+      created.push(p);
+    }
+
+    await writeAuditLog(tx, {
+      gameId,
+      actorType: ActorType.ADMIN,
+      actorId: "admin",
+      action: "batch_pins_generated",
+      metadata: { count: created.length, batchNumber: input.batchNumber },
+    });
+
+    return created;
+  });
+}
+

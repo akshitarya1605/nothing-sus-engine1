@@ -33,9 +33,18 @@ export interface GameRealtimeEvent {
   createdAt: string;
 }
 
+export type SessionKind = "ADMIN" | "SPECTATOR" | "PARTICIPANT";
+
 interface Options {
   /** false disables the subscription entirely (e.g. before login) */
   enabled: boolean;
+  /** Which of the three coexisting session cookies this caller means.
+   * Forwarded as `?as=` on every fetch so the server resolves the right
+   * one instead of guessing by cookie priority (see getSessionAs in
+   * lib/auth/session.ts) — without this, a browser holding more than one
+   * session type (a host who also opened the player link, say) can get
+   * silently handed another role's data. */
+  as: SessionKind;
   /** called once per event, in sequence order, after de-duplication */
   onEvent?: (event: GameRealtimeEvent) => void;
 }
@@ -46,7 +55,7 @@ interface TokenResponse {
   gameId: string;
 }
 
-export function useGameRealtime({ enabled, onEvent }: Options): { status: RealtimeStatus } {
+export function useGameRealtime({ enabled, as, onEvent }: Options): { status: RealtimeStatus } {
   const [status, setStatus] = useState<RealtimeStatus>("connecting");
   const onEventRef = useRef(onEvent);
   useEffect(() => {
@@ -58,7 +67,7 @@ export function useGameRealtime({ enabled, onEvent }: Options): { status: Realti
   /** Drain everything newer than the cursor from the replay endpoint. */
   const drain = useCallback(async () => {
     try {
-      const res = await fetch(`/api/game/events?since=${cursorRef.current.toString()}`, {
+      const res = await fetch(`/api/game/events?since=${cursorRef.current.toString()}&as=${as}`, {
         cache: "no-store",
       });
       if (!res.ok) return;
@@ -72,7 +81,7 @@ export function useGameRealtime({ enabled, onEvent }: Options): { status: Realti
     } catch {
       // network blip — the next event or reconnect will retry
     }
-  }, []);
+  }, [as]);
 
   useEffect(() => {
     if (!enabled) {
@@ -114,7 +123,7 @@ export function useGameRealtime({ enabled, onEvent }: Options): { status: Realti
     const connect = async () => {
       if (disposed) return;
       try {
-        const res = await fetch("/api/realtime/token", { cache: "no-store" });
+        const res = await fetch(`/api/realtime/token?as=${as}`, { cache: "no-store" });
         if (!res.ok) throw new Error(`token ${res.status}`);
         const { token, expiresIn, gameId } = (await res.json()) as TokenResponse;
         if (disposed) return;
@@ -174,7 +183,7 @@ export function useGameRealtime({ enabled, onEvent }: Options): { status: Realti
       if (channel) void client.removeChannel(channel);
       void client.realtime.disconnect();
     };
-  }, [enabled, drain]);
+  }, [enabled, as, drain]);
 
   return { status };
 }

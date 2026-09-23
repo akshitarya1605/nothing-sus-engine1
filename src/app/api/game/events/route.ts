@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { EventVisibility } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
-import { getAnySession } from "@/lib/auth/session";
+import { getSessionAs } from "@/lib/auth/session";
 import { handleRoute } from "@/lib/api/respond";
 import { GameEngineError } from "@/lib/game/errors";
 
@@ -24,10 +24,11 @@ const MAX_EVENTS = 200;
  */
 export async function GET(request: Request) {
   return handleRoute(async () => {
-    const session = await getAnySession();
+    const url = new URL(request.url);
+    const session = await getSessionAs(url.searchParams.get("as"));
     if (!session) throw new GameEngineError("UNAUTHENTICATED", "No active session");
 
-    const since = BigInt(new URL(request.url).searchParams.get("since") ?? "0");
+    const since = BigInt(url.searchParams.get("since") ?? "0");
 
     const rows = await prisma.gameEvent.findMany({
       where: {

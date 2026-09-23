@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAnySession } from "@/lib/auth/session";
+import { getSessionAs } from "@/lib/auth/session";
 import { withAudienceContext } from "@/lib/db/rlsContext";
 import { getAdminGameState, getParticipantGameState, getProjectorState, checkAutoAdvance } from "@/lib/game/engine";
 import type { AdminGameState, ParticipantGameState, ProjectorState } from "@/lib/game/state";
@@ -15,9 +15,10 @@ export const dynamic = "force-dynamic";
  * time-based auto-advance check before reading, so state is always
  * caught up regardless of who else has been connected.
  */
-export async function GET() {
+export async function GET(request: Request) {
   return handleRoute(async () => {
-    const session = await getAnySession();
+    const as = new URL(request.url).searchParams.get("as");
+    const session = await getSessionAs(as);
     if (!session) throw new GameEngineError("UNAUTHENTICATED", "No active session");
 
     await checkAutoAdvance(session.gameId);

@@ -74,6 +74,10 @@ model Game {
   adminSecret     String @unique
   spectatorSecret String @unique
 
+  roomCode   String? @unique
+  maxPlayers Int     @default(30)
+  presetId   String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -117,6 +121,11 @@ model GameConfig {
   /// max OTP attempts per participant per task within otpRateLimitWindowSeconds
   otpRateLimitMax           Int @default(10)
   otpRateLimitWindowSeconds Int @default(60)
+
+  killCooldownSeconds Int     @default(60)
+  weaponLocation      String?
+  weaponClue          String?
+  weaponQrCode        String? @default("WEAPON-SUS-2026")
 
   updatedAt DateTime @updatedAt
 }
@@ -278,15 +287,52 @@ enum ParticipantRole {
   IMPOSTER
 }
 
+model StudentAccount {
+  id             String    @id @default(cuid())
+  fullName       String
+  collegeRegId   String    @unique
+  passwordHash   String
+  approvalStatus String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  approvedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  participations Participant[]
+  sessions       StudentSession[]
+
+  @@index([approvalStatus])
+}
+
+model StudentSession {
+  id        String         @id @default(cuid())
+  accountId String
+  account   StudentAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+
+  @@index([accountId, revokedAt])
+}
+
 model Participant {
   id     String @id @default(cuid())
   gameId String
   game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
 
+  accountId String?
+  account   StudentAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
   /// the one-code login credential, e.g. "NS-7K4P92" — globally unique
   /// (not just per-game) so login needs only the code, nothing else.
   code String @unique
   name String
+
+  collegeRegId String?
+  fullName     String?
+  isApproved   Boolean   @default(false)
+  approvedAt   DateTime?
 
   groupId String?
   group   Group?  @relation(fields: [groupId], references: [id])
@@ -294,6 +340,11 @@ model Participant {
   /// null until roles are assigned server-side
   role   ParticipantRole?
   status ParticipantStatus @default(ALIVE)
+
+  playerNumber   Int?
+  batchNumber    Int       @default(1)
+  lastKillAt     DateTime?
+  weaponUnlocked Boolean   @default(false)
 
   currentRoundNumber Int?
   currentLocationId  String?
@@ -548,6 +599,7 @@ model ChatMessage {
   /// lib/game/actions/chat.ts. Never rendered as raw HTML on any client.
   message String
 
+  isGhost   Boolean   @default(false)
   deletedAt DateTime? // admin moderation — soft delete, not a hard delete
 
   createdAt DateTime @default(now())
@@ -730,4 +782,41 @@ model RateLimitHit {
   createdAt DateTime @default(now())
 
   @@index([key, createdAt])
+}
+
+// ---------------------------------------------------------------------
+// Game Presets & Reusable Task Templates
+// ---------------------------------------------------------------------
+
+model GamePreset {
+  id                      String   @id @default(cuid())
+  name                    String
+  description             String?
+  maxPlayers              Int      @default(30)
+  imposterCount           Int      @default(3)
+  killCooldownSeconds     Int      @default(60)
+  weaponLocation          String?
+  weaponClue              String?
+  weaponQrCode            String?  @default("WEAPON-SUS-2026")
+  allowEmergencyMeeting   Boolean  @default(true)
+  totalRounds             Int      @default(4)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  tasks PresetTask[]
+}
+
+model PresetTask {
+  id               String         @id @default(cuid())
+  presetId         String
+  preset           GamePreset     @relation(fields: [presetId], references: [id], onDelete: Cascade)
+  title            String
+  description      String
+  roomName         String?
+  difficulty       TaskDifficulty @default(EASY)
+  points           Int            @default(10)
+  estimatedMinutes Int            @default(5)
+  roundNumber      Int            @default(1)
+
+  @@index([presetId])
 }

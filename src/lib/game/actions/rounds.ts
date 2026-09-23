@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { GameStatus, RoundStatus, RoundPhase, ParticipantStatus } from "@prisma/client";
-import { prisma as defaultPrisma } from "../../db/prisma";
+import { prismaWrite as defaultPrisma } from "../../db/prisma";
 import { GameEngineError } from "../errors";
 import { assertValidTransition } from "../transitions";
 import { writeAuditLog, ActorType } from "../audit";

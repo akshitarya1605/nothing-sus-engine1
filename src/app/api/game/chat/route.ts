@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAnySession } from "@/lib/auth/session";
+import { getSessionAs } from "@/lib/auth/session";
 import { ChatEngine } from "@/lib/game/engine";
 import { GameEngineError } from "@/lib/game/errors";
 import { handleRoute } from "@/lib/api/respond";
@@ -8,11 +8,12 @@ import { handleRoute } from "@/lib/api/respond";
  * spectator/projector (spec: "Projector does NOT display chat"). */
 export async function GET(request: Request) {
   return handleRoute(async () => {
-    const session = await getAnySession();
+    const url = new URL(request.url);
+    const session = await getSessionAs(url.searchParams.get("as"));
     if (!session || (session.kind !== "ADMIN" && session.kind !== "PARTICIPANT")) {
       throw new GameEngineError("UNAUTHENTICATED", "No active admin or participant session");
     }
-    const meetingId = new URL(request.url).searchParams.get("meetingId");
+    const meetingId = url.searchParams.get("meetingId");
     if (!meetingId) throw new GameEngineError("VALIDATION", "meetingId is required");
 
     const messages = await ChatEngine.getChatMessages(session.gameId, meetingId);

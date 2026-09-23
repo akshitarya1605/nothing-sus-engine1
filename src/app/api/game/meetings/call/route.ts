@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { MeetingType } from "@prisma/client";
-import { getAnySession } from "@/lib/auth/session";
+import { getSessionAs } from "@/lib/auth/session";
 import { MeetingsEngine } from "@/lib/game/engine";
 import { callMeetingSchema } from "@/lib/game/validators";
 import { handleRoute, parseJsonBody } from "@/lib/api/respond";
@@ -11,7 +11,8 @@ import { GameEngineError } from "@/lib/game/errors";
  * enforced inside the engine, not here). */
 export async function POST(request: Request) {
   return handleRoute(async () => {
-    const session = await getAnySession();
+    const as = new URL(request.url).searchParams.get("as");
+    const session = await getSessionAs(as);
     if (!session || (session.kind !== "ADMIN" && session.kind !== "PARTICIPANT")) {
       throw new GameEngineError("UNAUTHENTICATED", "No active admin or participant session");
     }

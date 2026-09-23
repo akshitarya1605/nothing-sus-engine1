@@ -3,9 +3,13 @@ import { defineConfig } from "prisma/config";
 // Prisma 7's CLI runs this file as a plain module and does not load .env
 // on its own, so we do it explicitly before reading DATABASE_URL below.
 try {
-  process.loadEnvFile();
+  process.loadEnvFile(".env.local");
 } catch {
-  // no .env file present (e.g. in CI / Vercel where vars are injected directly)
+  try {
+    process.loadEnvFile();
+  } catch {
+    // no .env file present (e.g. in CI / Vercel where vars are injected directly)
+  }
 }
 
 // Used by the CLI (migrate, studio, db push, seed). The running app never

@@ -10,6 +10,7 @@ import { Starfield } from "@/components/ui/Starfield";
 import { TaskProgress } from "@/components/game/TaskProgress";
 import { EventFeed, type FeedEvent } from "@/components/game/EventFeed";
 import { RevealCard } from "@/components/game/RevealCard";
+import { IsaHeader } from "@/components/ui/IsaHeader";
 
 interface ProjectorState {
   status: string;
@@ -18,6 +19,7 @@ interface ProjectorState {
   globalProgress: { completed: number; inPlay: number; percentage: number };
   aliveCount: number;
   eliminatedCount: number;
+  playerRoster?: Array<{ id: string; name: string; playerNumber?: number | null; status: string }>;
   meetingState: { status: string; type: string } | null;
   votingState: { isOpen: boolean } | null;
   recentPublicEvents: FeedEvent[];
@@ -33,7 +35,7 @@ export default function SpectatorPage() {
   const [playUrl, setPlayUrl] = useState("/play");
 
   const refresh = useCallback(async () => {
-    const res = await fetch("/api/game/state", { cache: "no-store" });
+    const res = await fetch("/api/game/state?as=SPECTATOR", { cache: "no-store" });
     if (!res.ok) {
       if (res.status === 401) setDenied(true);
       return;
@@ -53,7 +55,7 @@ export default function SpectatorPage() {
   }, [refresh]);
 
   const onEvent = useCallback(() => void refresh(), [refresh]);
-  useGameRealtime({ enabled: !denied, onEvent });
+  useGameRealtime({ enabled: !denied, as: "SPECTATOR", onEvent });
 
   // show a fresh elimination reveal for a beat, then fall back to the board
   const [showReveal, setShowReveal] = useState(false);
@@ -100,7 +102,8 @@ export default function SpectatorPage() {
   const inMeeting = !!state.meetingState;
   const preGame = !state.round && state.status !== "FINISHED";
 
-  if (preGame) return <AttractScreen playUrl={playUrl} />;
+  const roomCode = (state as unknown as { roomCode?: string })?.roomCode;
+  if (preGame) return <AttractScreen playUrl={playUrl} roomCode={roomCode} state={state} />;
   if (inMeeting) return <MeetingScreen state={state} />;
   return <LiveScreen state={state} />;
 }
@@ -126,21 +129,37 @@ function BrandMark({ className }: { className?: string }) {
 
 /* ------------------------------------------------------------------ */
 
-function AttractScreen({ playUrl }: { playUrl: string }) {
+function AttractScreen({ playUrl, roomCode, state }: { playUrl: string; roomCode?: string; state?: ProjectorState }) {
+  const joinedCount = state?.playerRoster?.length ?? 0;
   return (
-    <Shell>
-      <div className="flex flex-col items-center gap-8">
-        <BrandMark className="text-[7vw]" />
-        <p className="font-display text-[2vw] uppercase tracking-[0.4em] text-fg-dim">Season 01 · Live Now</p>
-        <div className="mt-4 flex flex-col items-center gap-4">
-          <QRCode value={playUrl} size={260} />
-          <p className="font-display text-[1.6vw] text-fg-dim">
-            Scan to join · or go to{" "}
-            <span className="text-cyan">{playUrl.replace(/^https?:\/\//, "")}</span>
-          </p>
+    <main className="ns-screen relative flex flex-col justify-between overflow-hidden bg-void text-center">
+      <IsaHeader />
+      <Starfield className="pointer-events-none absolute inset-0 h-full w-full opacity-60" />
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-6 px-6 py-4">
+        <BrandMark className="text-[6vw]" />
+        
+        {roomCode ? (
+          <div className="rounded-3xl border-4 border-yellow bg-yellow/10 px-8 py-4 shadow-[0_0_50px_rgba(255,200,0,0.3)] backdrop-blur-md">
+            <p className="font-display text-[1.4vw] font-bold uppercase tracking-[0.4em] text-fg-dim">ROOM CODE TO JOIN</p>
+            <p className="font-display text-[7vw] font-black tracking-widest text-yellow animate-pulse my-1">{roomCode}</p>
+            <p className="font-display text-[1.2vw] text-cyan font-bold">
+              Scan QR or go to <span className="underline">{playUrl.replace(/^https?:\/\//, "")}</span>
+            </p>
+          </div>
+        ) : (
+          <p className="font-display text-[2vw] uppercase tracking-[0.4em] text-fg-dim">Waiting for Host to Launch Room…</p>
+        )}
+
+        <div className="mt-2 flex flex-col items-center gap-3">
+          <QRCode value={playUrl} size={200} />
+          {joinedCount > 0 && (
+            <p className="font-display text-[1.6vw] font-bold text-green animate-bounce">
+              🟢 {joinedCount} Players Joined in Lobby
+            </p>
+          )}
         </div>
       </div>
-    </Shell>
+    </main>
   );
 }
 
@@ -167,7 +186,30 @@ function LiveScreen({ state }: { state: ProjectorState }) {
         </header>
 
         <div className="grid flex-1 place-items-center">
-          <TaskProgress {...state.globalProgress} size="hero" />
+          <div className="flex flex-col items-center gap-4 w-full">
+            <TaskProgress {...state.globalProgress} size="hero" />
+            {state.playerRoster && state.playerRoster.length > 0 && (
+              <div className="mt-2 flex flex-wrap justify-center gap-2 max-w-5xl">
+                {state.playerRoster.map((p) => {
+                  const dead = p.status === "ELIMINATED" || p.status === "DISQUALIFIED";
+                  return (
+                    <div
+                      key={p.id}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-full border-2 px-3 py-1 font-mono text-base font-bold transition-all",
+                        dead
+                          ? "border-red/60 bg-red/20 text-red line-through opacity-60"
+                          : "border-cyan/60 bg-cyan/20 text-cyan",
+                      )}
+                    >
+                      <span>{p.playerNumber ? `#${String(p.playerNumber).padStart(2, "0")}` : p.name}</span>
+                      <span>{dead ? "💀" : "🟢"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         <footer className="flex items-end justify-between">

@@ -1,7 +1,7 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { ParticipantStatus, ParticipantTaskStatus, TaskStatus, TaskDifficulty } from "@prisma/client";
 import { randomInt } from "node:crypto";
-import { prisma as defaultPrisma } from "../../db/prisma";
+import { prismaWrite as defaultPrisma } from "../../db/prisma";
 import { GameEngineError } from "../errors";
 import { LIVE_PLAY_STATUSES } from "../permissions";
 import { writeAuditLog, ActorType } from "../audit";

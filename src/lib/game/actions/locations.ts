@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { LocationEventType, ParticipantStatus } from "@prisma/client";
-import { prisma as defaultPrisma } from "../../db/prisma";
+import { prismaWrite as defaultPrisma } from "../../db/prisma";
 import { GameEngineError } from "../errors";
 import { LIVE_PLAY_STATUSES } from "../permissions";
 import { publishEvent } from "../events/publisher";

@@ -78,6 +78,16 @@ export async function clearParticipantSessionCookie(): Promise<void> {
   store.delete(PARTICIPANT_COOKIE);
 }
 
+export async function clearAdminSessionCookie(): Promise<void> {
+  const store = await cookies();
+  store.delete(ADMIN_COOKIE);
+}
+
+export async function clearSpectatorSessionCookie(): Promise<void> {
+  const store = await cookies();
+  store.delete(SPECTATOR_COOKIE);
+}
+
 // ---------------------------------------------------------------------
 // Admin sessions
 // ---------------------------------------------------------------------
@@ -164,4 +174,38 @@ export async function getAnySession(): Promise<AnySession | null> {
   const spectator = await getSpectatorSession();
   if (spectator) return { kind: "SPECTATOR", ...spectator };
   return null;
+}
+
+/**
+ * All three session cookies (`ns_participant`, `ns_admin`, `ns_spectator`)
+ * routinely coexist in one browser — a host who also opens the player join
+ * link on the same laptop, or previews the projector screen from their own
+ * device, ends up holding all three at once. `getAnySession()`'s fixed
+ * priority order (participant beats admin beats spectator) then silently
+ * answers for the wrong role: e.g. the control room gets rendered with
+ * player-shaped data and crashes, or the projector screen gets rendered
+ * with admin/participant-shaped data (which has no `round`/`finalResult`
+ * field) and falls back to its "not started yet" splash forever, even
+ * mid-game.
+ *
+ * `getSessionAs()` is the fix: every first-party page now says which
+ * surface it is via an explicit `?as=ADMIN|SPECTATOR|PARTICIPANT` query
+ * param, and this resolves *only* that specific session — no priority
+ * guessing. `as` absent/unrecognized falls back to `getAnySession()`'s old
+ * behavior, for any caller not yet updated.
+ */
+export async function getSessionAs(as: string | null): Promise<AnySession | null> {
+  if (as === "ADMIN") {
+    const admin = await getAdminSession();
+    return admin ? { kind: "ADMIN", ...admin } : null;
+  }
+  if (as === "SPECTATOR") {
+    const spectator = await getSpectatorSession();
+    return spectator ? { kind: "SPECTATOR", ...spectator } : null;
+  }
+  if (as === "PARTICIPANT") {
+    const participant = await getParticipantSession();
+    return participant ? { kind: "PARTICIPANT", ...participant } : null;
+  }
+  return getAnySession();
 }

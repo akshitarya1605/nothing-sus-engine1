@@ -84,16 +84,29 @@ export function IntroAnimation({ starFieldRef, reducedMotion, onDone }: IntroAni
       );
       tl.to(subRef.current, { opacity: 1, y: 0, duration: 0.7, ease: "power2.out" }, "-=0.4");
 
-      // subtle idle float while held on screen
-      const floatTween = gsap.to(titleWrapRef.current, {
-        y: -8,
-        rotateX: 2,
-        duration: 2.1,
-        ease: "sine.inOut",
-        yoyo: true,
-        repeat: 1,
-      });
-      tl.add(floatTween, "<+=0.2");
+      // subtle idle float while held on screen — built directly as a
+      // timeline child (tl.to), not gsap.to()+tl.add(). The latter starts
+      // the tween playing immediately on GSAP's global timeline the
+      // instant it's created, then reparents it into `tl` after the fact;
+      // that desyncs the timeline's position bookkeeping for this child
+      // and was silently stalling the whole timeline right here — the
+      // entrance played, the float settled, and nothing after it (the
+      // hold, the break-apart burst, onComplete/onDone) ever ran, so the
+      // intro never handed off to the real site. tl.to() returns the same
+      // kind of tween instance (still .kill()-able below), just correctly
+      // owned by the timeline from the start.
+      const floatTween = tl.to(
+        titleWrapRef.current,
+        {
+          y: -8,
+          rotateX: 2,
+          duration: 2.1,
+          ease: "sine.inOut",
+          yoyo: true,
+          repeat: 1,
+        },
+        "<+=0.2",
+      );
 
       tl.to({}, { duration: 0.5 }); // hold
 

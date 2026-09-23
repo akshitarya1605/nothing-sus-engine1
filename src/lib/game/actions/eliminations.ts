@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { EliminationMethod, ParticipantStatus, RoleRevealStatus } from "@prisma/client";
-import { prisma as defaultPrisma } from "../../db/prisma";
+import { EliminationMethod, ParticipantRole, ParticipantStatus, RoleRevealStatus } from "@prisma/client";
+import { prismaWrite as defaultPrisma } from "../../db/prisma";
 import { GameEngineError } from "../errors";
 import { writeAuditLog, ActorType } from "../audit";
 import { publishEvent } from "../events/publisher";
@@ -179,3 +179,103 @@ export async function revealRole(
     });
   });
 }
+
+/**
+ * Impostor-triggered elimination by entering the victim's wearable Player Number (#01-#30).
+ * Enforces weapon unlock check and 60-second kill cooldown.
+ */
+export async function eliminateByPlayerNumber(
+  gameId: string,
+  input: { impostorId: string; targetPlayerNumber: number },
+  prisma: PrismaClient = defaultPrisma,
+) {
+  return prisma.$transaction(async (tx) => {
+    const impostor = await tx.participant.findUnique({ where: { id: input.impostorId } });
+    if (!impostor || impostor.gameId !== gameId) {
+      throw new GameEngineError("NOT_FOUND", "Impostor not found");
+    }
+    if (impostor.role !== ParticipantRole.IMPOSTER) {
+      throw new GameEngineError("FORBIDDEN", "Only Impostors can perform eliminations");
+    }
+    if (impostor.status !== ParticipantStatus.ALIVE) {
+      throw new GameEngineError("FORBIDDEN", "Eliminated Impostors cannot perform kills");
+    }
+    if (!impostor.weaponUnlocked) {
+      throw new GameEngineError("FORBIDDEN", "Must find and scan the physical murder weapon first");
+    }
+
+    const config = await tx.gameConfig.findUnique({ where: { gameId } });
+    const cooldownMs = (config?.killCooldownSeconds ?? 60) * 1000;
+    if (impostor.lastKillAt) {
+      const elapsed = Date.now() - new Date(impostor.lastKillAt).getTime();
+      if (elapsed < cooldownMs) {
+        const remainingSec = Math.ceil((cooldownMs - elapsed) / 1000);
+        throw new GameEngineError("CONFLICT", `Kill on cooldown! Wait ${remainingSec} seconds`);
+      }
+    }
+
+    const target = await tx.participant.findFirst({
+      where: {
+        gameId,
+        playerNumber: input.targetPlayerNumber,
+      },
+    });
+
+    if (!target) {
+      throw new GameEngineError("NOT_FOUND", `No player found with Number #${input.targetPlayerNumber}`);
+    }
+    if (target.status !== ParticipantStatus.ALIVE) {
+      throw new GameEngineError("CONFLICT", `Player #${input.targetPlayerNumber} is already eliminated`);
+    }
+    if (target.id === impostor.id) {
+      throw new GameEngineError("VALIDATION", "You cannot eliminate yourself");
+    }
+
+    await tx.participant.update({
+      where: { id: impostor.id },
+      data: { lastKillAt: new Date() },
+    });
+
+    const elimination = await eliminateParticipantTx(tx, gameId, {
+      participantId: target.id,
+      method: EliminationMethod.ABILITY,
+      actorId: impostor.id,
+    });
+
+    return { target, elimination };
+  });
+}
+
+/**
+ * Unlocks murder weapon for Impostor when scanning weapon QR code or secret key.
+ */
+export async function unlockWeapon(
+  gameId: string,
+  input: { impostorId: string; qrCode: string },
+  prisma: PrismaClient = defaultPrisma,
+) {
+  return prisma.$transaction(async (tx) => {
+    const impostor = await tx.participant.findUnique({ where: { id: input.impostorId } });
+    if (!impostor || impostor.gameId !== gameId) {
+      throw new GameEngineError("NOT_FOUND", "Participant not found");
+    }
+    if (impostor.role !== ParticipantRole.IMPOSTER) {
+      throw new GameEngineError("FORBIDDEN", "Only Impostors can unlock murder weapons");
+    }
+
+    const config = await tx.gameConfig.findUnique({ where: { gameId } });
+    const expectedQr = config?.weaponQrCode ?? "WEAPON-SUS-2026";
+
+    if (input.qrCode.trim().toUpperCase() !== expectedQr.trim().toUpperCase()) {
+      throw new GameEngineError("VALIDATION", "Invalid Weapon QR Code or Secret Code");
+    }
+
+    await tx.participant.update({
+      where: { id: impostor.id },
+      data: { weaponUnlocked: true },
+    });
+
+    return { success: true };
+  });
+}
+

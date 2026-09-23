@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
-import { prisma as defaultPrisma } from "../../db/prisma";
+import { prismaWrite as defaultPrisma } from "../../db/prisma";
 import { writeAuditLog, ActorType } from "../audit";
 import { publishEvent } from "../events/publisher";
 

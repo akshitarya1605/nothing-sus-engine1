@@ -35,22 +35,34 @@ export function Hero() {
   return (
     <section id="hero" ref={rootRef} className="hero">
       <div className="hero-inner">
-        <div className="hero-eyebrow">Season 01 · Live Now</div>
+        <div className="hero-eyebrow font-display text-xs font-bold uppercase tracking-widest text-cyan">
+          ISA — INTERNATIONAL SOCIETY OF AUTOMATION | MANIPAL UNIVERSITY JAIPUR
+        </div>
         <h1 className="hero-title">
           <span>Nothing</span>
-          <span className="accent">Is Sus</span>
+          <span className="accent">Sus</span>
         </h1>
         <p className="hero-desc">
-          A live game of tasks, trust, deception and deduction. Step into the ship —
-          one of you isn't who they say they are.
+          Presented by the ISA Student Chapter at Manipal University Jaipur. A live campus event of real-world tasks, trust, deception and social deduction.
         </p>
-        <div className="hero-actions">
-          <button type="button" className="hero-cta" onClick={() => scrollTo("enter")}>
-            Enter The Game
-          </button>
-          <button type="button" className="hero-cta-ghost" onClick={() => scrollTo("story")}>
-            Discover the game ↓
-          </button>
+        <div className="hero-actions flex flex-wrap items-center justify-center gap-3">
+          <a href="/join" className="hero-cta font-bold">
+            Enter Game Room
+          </a>
+          <a href="/register" className="hero-cta-ghost font-bold text-cyan border border-cyan/40">
+            Register Account
+          </a>
+          <a href="/login" className="hero-cta-ghost font-bold text-zinc-300 border border-zinc-700 hover:text-white">
+            Login
+          </a>
+          <a
+            href="https://www.instagram.com/isa_muj_chapter?stkn=MWFlMTNuMW10YmZ3Yg=="
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hero-cta-ghost font-bold text-pink-400 border border-pink-500/30"
+          >
+            Instagram: @isa_muj_chapter
+          </a>
         </div>
       </div>
 
