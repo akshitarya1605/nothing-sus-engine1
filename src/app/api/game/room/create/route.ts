@@ -115,27 +115,26 @@ export async function POST(request: Request) {
       },
     });
 
-    // If preset provided, generate rounds and tasks
-    if (presetTasks.length > 0) {
-      // Create initial rounds
-      const roundMap = new Map<number, string>();
-      for (let r = 1; r <= totalRounds; r++) {
-        const round = await prismaWrite.round.upsert({
-          where: { gameId_number: { gameId: session.gameId, number: r } },
-          update: { name: `Round ${r}`, durationMinutes: 20, status: "SCHEDULED" },
-          create: {
-            gameId: session.gameId,
-            number: r,
-            name: `Round ${r}`,
-            durationMinutes: 20,
-            scheduledStartAt: new Date(),
-            status: "SCHEDULED",
-          },
-        });
-        roundMap.set(r, round.id);
-      }
+    // Always generate initial scheduled rounds
+    const roundMap = new Map<number, string>();
+    for (let r = 1; r <= totalRounds; r++) {
+      const round = await prismaWrite.round.upsert({
+        where: { gameId_number: { gameId: session.gameId, number: r } },
+        update: { name: `Round ${r}`, durationMinutes: 20, status: "SCHEDULED" },
+        create: {
+          gameId: session.gameId,
+          number: r,
+          name: `Round ${r}`,
+          durationMinutes: 20,
+          scheduledStartAt: new Date(),
+          status: "SCHEDULED",
+        },
+      });
+      roundMap.set(r, round.id);
+    }
 
-      // Populate tasks
+    // If preset provided, generate tasks
+    if (presetTasks.length > 0) {
       for (const pt of presetTasks) {
         const roundId = roundMap.get(pt.roundNumber) || roundMap.get(1)!;
         const otpPlain = String(randomInt(1000, 9999));

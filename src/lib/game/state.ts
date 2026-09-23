@@ -51,7 +51,7 @@ export interface ParticipantGameState {
   killCooldownSeconds: number;
   weaponLocation: string | null;
   weaponClue: string | null;
-  game: { status: string; currentRoundNumber: number; currentPhase: string | null };
+  game: { status: string; roomCode: string | null; currentRoundNumber: number; currentPhase: string | null };
   round: {
     number: number;
     name: string;
@@ -134,6 +134,8 @@ export async function getParticipantGameState(
     take: 25,
   });
 
+  const isLobby = participant.game.status === "SETUP" || participant.game.status === "READY";
+
   return {
     identity: {
       id: participant.id,
@@ -142,15 +144,16 @@ export async function getParticipantGameState(
       playerNumber: participant.playerNumber,
       batchNumber: participant.batchNumber,
     },
-    ownRole: participant.role,
+    ownRole: isLobby ? null : participant.role,
     ownStatus: participant.status,
-    weaponUnlocked: participant.weaponUnlocked,
-    lastKillAt: participant.lastKillAt?.toISOString() ?? null,
-    killCooldownSeconds: participant.game.config?.killCooldownSeconds ?? 60,
-    weaponLocation: participant.game.config?.weaponLocation ?? null,
-    weaponClue: participant.game.config?.weaponClue ?? null,
+    weaponUnlocked: isLobby ? false : participant.weaponUnlocked,
+    lastKillAt: isLobby ? null : participant.lastKillAt?.toISOString() ?? null,
+    killCooldownSeconds: isLobby ? 0 : participant.game.config?.killCooldownSeconds ?? 60,
+    weaponLocation: isLobby ? null : participant.game.config?.weaponLocation ?? null,
+    weaponClue: isLobby ? null : participant.game.config?.weaponClue ?? null,
     game: {
       status: participant.game.status,
+      roomCode: participant.game.roomCode,
       currentRoundNumber: participant.game.currentRoundNumber,
       currentPhase: participant.game.currentPhase,
     },
@@ -158,14 +161,16 @@ export async function getParticipantGameState(
       ? { number: round.number, name: round.name, msRemaining: timing?.roundMsRemaining ?? null }
       : null,
     meetingStatus: activeMeeting?.status ?? null,
-    ownTasks: participant.participantTasks.map((pt) => ({
-      taskId: pt.taskId,
-      title: pt.task.title,
-      difficulty: pt.task.difficulty,
-      points: pt.task.points,
-      status: pt.status,
-    })),
-    ownProgress: progress,
+    ownTasks: isLobby
+      ? []
+      : participant.participantTasks.map((pt) => ({
+          taskId: pt.taskId,
+          title: pt.task.title,
+          difficulty: pt.task.difficulty,
+          points: pt.task.points,
+          status: pt.status,
+        })),
+    ownProgress: isLobby ? { completed: 0, inPlay: 0, percentage: 0 } : progress,
     ownLocation: participant.currentLocation
       ? { id: participant.currentLocation.id, name: participant.currentLocation.name }
       : null,

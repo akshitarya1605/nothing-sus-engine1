@@ -57,6 +57,8 @@ export default function PlayerGameConsolePage() {
   const [selectedVictimId, setSelectedVictimId] = useState<string>("");
   const [votedParticipantId, setVotedParticipantId] = useState<string | null>(null);
   const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
+  const [showRoleReveal, setShowRoleReveal] = useState(false);
+  const prevGameStatusRef = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -68,6 +70,13 @@ export default function PlayerGameConsolePage() {
         return;
       }
       const data = await res.json();
+      const newStatus = data?.game?.status;
+      const wasLobby = prevGameStatusRef.current === "SETUP" || prevGameStatusRef.current === "READY";
+      const nowLive = newStatus && newStatus !== "SETUP" && newStatus !== "READY";
+      if (wasLobby && nowLive && data?.ownRole) {
+        setShowRoleReveal(true);
+      }
+      prevGameStatusRef.current = newStatus;
       setState(data);
     } catch {
       /* ignore */
@@ -235,17 +244,23 @@ export default function PlayerGameConsolePage() {
               className={`text-[10px] font-mono font-bold tracking-wider px-2 py-0.5 rounded border block ${
                 isEliminated
                   ? "bg-zinc-900 text-zinc-500 border-zinc-800 line-through"
+                  : isLobby
+                  ? "bg-zinc-900 text-zinc-400 border-zinc-800"
                   : state?.ownRole === "IMPOSTER"
-                  ? "bg-red-950 text-red-400 border-red-500/40"
+                  ? "bg-red-950 text-red-400 border-red-500/40 font-black"
                   : state?.ownRole === "ENGINEER"
-                  ? "bg-cyan-950 text-cyan-400 border-cyan-500/40"
+                  ? "bg-cyan-950 text-cyan-400 border-cyan-500/40 font-black"
                   : "bg-zinc-900 text-zinc-400 border-zinc-700"
               }`}
             >
-              {isEliminated ? "ELIMINATED" : state?.ownRole || "LOBBY"}
+              {isEliminated
+                ? "ELIMINATED"
+                : isLobby
+                ? "WAITING LOBBY"
+                : state?.ownRole || "WAITING"}
             </span>
-            <span className="text-[9px] font-mono text-zinc-500 mt-1 block">
-              STATUS: {state?.game.status}
+            <span className="text-[9px] font-mono text-zinc-500 mt-1 block uppercase">
+              STATUS: {isLobby ? "WAITING FOR HOST" : isMeeting ? "MEETING" : isVoting ? "VOTING" : isFinished ? "GAME OVER" : "GAME LIVE"}
             </span>
           </div>
         </div>
@@ -263,11 +278,60 @@ export default function PlayerGameConsolePage() {
         )}
 
         {/* ------------------------------------------------------------- */}
+        {/* ROLE REVEAL DRAMATIC MODAL                                    */}
+        {/* ------------------------------------------------------------- */}
+        {showRoleReveal && state?.ownRole && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-md animate-in fade-in zoom-in duration-300">
+            <div
+              className={`w-full max-w-sm rounded-3xl border-2 p-8 text-center space-y-6 shadow-2xl ${
+                state.ownRole === "IMPOSTER"
+                  ? "border-red-500 bg-zinc-950 shadow-red-950/80"
+                  : "border-cyan-500 bg-zinc-950 shadow-cyan-950/80"
+              }`}
+            >
+              <span className="text-[10px] font-mono tracking-widest uppercase text-zinc-400 block">
+                CONFIDENTIAL DOSSIER
+              </span>
+
+              <div className="space-y-2">
+                <div className="text-xs font-mono text-zinc-400 uppercase tracking-widest">
+                  YOUR SECRET ROLE
+                </div>
+                <div
+                  className={`font-mono text-4xl sm:text-5xl font-black tracking-widest ${
+                    state.ownRole === "IMPOSTER" ? "text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.7)]" : "text-cyan-400 drop-shadow-[0_0_20px_rgba(6,182,212,0.7)]"
+                  }`}
+                >
+                  {state.ownRole}
+                </div>
+              </div>
+
+              <p className="text-xs text-zinc-300 leading-relaxed font-mono">
+                {state.ownRole === "IMPOSTER"
+                  ? "Infiltrate the crew. Sabotage physical campus systems. Eliminate engineers discreetly without getting caught."
+                  : "Complete physical campus station tasks. Report suspicious players. Vote out impostors during meetings."}
+              </p>
+
+              <button
+                onClick={() => setShowRoleReveal(false)}
+                className={`w-full py-3 rounded-xl font-mono text-xs font-black uppercase tracking-wider text-white shadow-xl transition-all ${
+                  state.ownRole === "IMPOSTER"
+                    ? "bg-red-600 hover:bg-red-500 shadow-red-900/50"
+                    : "bg-cyan-600 hover:bg-cyan-500 shadow-cyan-900/50"
+                }`}
+              >
+                Enter Arena Console →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
         {/* STATE 1: WAITING LOBBY                                        */}
         {/* ------------------------------------------------------------- */}
         {isLobby && (
-          <div className="rounded-2xl border border-red-500/30 bg-zinc-950 p-6 sm:p-8 space-y-6 text-center shadow-2xl">
-            <span className="text-[10px] font-mono tracking-widest uppercase text-red-400 bg-red-950/60 border border-red-500/30 px-3 py-1 rounded inline-block">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 sm:p-8 space-y-6 text-center shadow-2xl">
+            <span className="text-[10px] font-mono tracking-widest uppercase text-zinc-400 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded inline-block">
               WAITING LOBBY
             </span>
 
@@ -286,14 +350,14 @@ export default function PlayerGameConsolePage() {
                 YOU ARE CONNECTED
               </div>
               <div className="text-zinc-400">
-                Assigned Badge: <span className="text-white font-bold">#{String(state?.identity.playerNumber).padStart(2, "0")}</span>
+                Player Badge: <span className="text-white font-bold">#{String(state?.identity.playerNumber).padStart(2, "0")}</span>
               </div>
             </div>
 
             <div className="space-y-2 pt-2">
-              <p className="text-sm text-zinc-300 font-medium">Waiting for Host</p>
-              <p className="text-xs text-zinc-500 max-w-xs mx-auto leading-relaxed">
-                The ISA game host will launch the round once all players are assembled. Your secret role will be transmitted immediately.
+              <p className="text-sm text-zinc-200 font-bold">Waiting for Host</p>
+              <p className="text-xs text-zinc-400 max-w-xs mx-auto leading-relaxed">
+                The host will start the game when everyone is ready. Your secret role will be revealed when the match begins.
               </p>
             </div>
 

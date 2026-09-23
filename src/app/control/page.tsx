@@ -267,26 +267,16 @@ export default function ControlPage() {
     }
     setActionBusy("start");
     try {
-      const targetImposters = state?.config?.imposterCount || imposterCount;
-      const assignRes = await fetch("/api/game/roles/assign", {
+      const res = await fetch("/api/game/room/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imposterCount: targetImposters }),
       });
-      if (!assignRes.ok) {
-        const b = await assignRes.json();
-        throw new Error(b.message || "Role assignment failed.");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to launch match.");
       }
-      await fetch("/api/game/roles/lock", { method: "POST" });
 
-      const startRes = await fetch("/api/game/rounds/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roundNumber: 1 }),
-      });
-      if (!startRes.ok) throw new Error("Failed to start round.");
-
-      notify("Match Started! Roles transmitted to all player consoles.");
+      notify(data.message || "Match Started! Roles transmitted to all player consoles.");
       await refreshGame();
     } catch (err: unknown) {
       notify(err instanceof Error ? err.message : "Failed to launch match", "err");
@@ -707,7 +697,7 @@ export default function ControlPage() {
                       disabled={actionBusy === "start" || participants.length === 0}
                       className="py-3 px-6 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/50"
                     >
-                      {actionBusy === "start" ? "Launching Match..." : `Start Game (${participants.length} Ready)`}
+                      {actionBusy === "start" ? "Launching Match..." : `Start Game (${participants.length} Players)`}
                     </button>
                     <a
                       href={`/spectator/${roomCode}`}

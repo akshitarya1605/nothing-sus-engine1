@@ -31,20 +31,21 @@ import { GameEngineError } from "./errors";
  * not a generic hub you can pause-then-jump-elsewhere from.
  */
 const TRANSITIONS: Record<GameStatus, GameStatus[]> = {
-  SETUP: [GameStatus.READY],
-  READY: [GameStatus.LIVE],
-  LIVE: [GameStatus.MEETING, GameStatus.PAUSED],
-  MEETING: [GameStatus.VOTING, GameStatus.PAUSED],
-  VOTING: [GameStatus.REVEAL, GameStatus.PAUSED],
-  REVEAL: [GameStatus.ROUND_COMPLETE, GameStatus.PAUSED],
+  SETUP: [GameStatus.READY, GameStatus.LIVE, GameStatus.FINISHED],
+  READY: [GameStatus.LIVE, GameStatus.SETUP, GameStatus.FINISHED],
+  LIVE: [GameStatus.MEETING, GameStatus.PAUSED, GameStatus.FINISHED],
+  MEETING: [GameStatus.VOTING, GameStatus.PAUSED, GameStatus.FINISHED],
+  VOTING: [GameStatus.REVEAL, GameStatus.PAUSED, GameStatus.FINISHED],
+  REVEAL: [GameStatus.ROUND_COMPLETE, GameStatus.PAUSED, GameStatus.FINISHED],
   ROUND_COMPLETE: [GameStatus.LIVE, GameStatus.FINISHED],
   PAUSED: [
     GameStatus.LIVE,
     GameStatus.MEETING,
     GameStatus.VOTING,
     GameStatus.REVEAL,
+    GameStatus.FINISHED,
   ],
-  FINISHED: [],
+  FINISHED: [GameStatus.SETUP],
 };
 
 export function isValidTransition(from: GameStatus, to: GameStatus): boolean {

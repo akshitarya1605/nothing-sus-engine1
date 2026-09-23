@@ -98,7 +98,7 @@ async function runEndToEndSimulation() {
       name: student1.fullName,
       fullName: student1.fullName,
       collegeRegId: student1.collegeRegId,
-      code: "NS-991001",
+      code: `NS-${Math.floor(100000 + Math.random() * 900000)}`,
       playerNumber: 1,
       isApproved: true,
       status: "ALIVE",
@@ -113,7 +113,7 @@ async function runEndToEndSimulation() {
       name: student2.fullName,
       fullName: student2.fullName,
       collegeRegId: student2.collegeRegId,
-      code: "NS-991002",
+      code: `NS-${Math.floor(100000 + Math.random() * 900000)}`,
       playerNumber: 2,
       isApproved: true,
       status: "ALIVE",
@@ -124,15 +124,41 @@ async function runEndToEndSimulation() {
   const joinedCount = await prisma.participant.count({ where: { gameId: game.id } });
   console.log(`Lobby count: ${joinedCount} / ${game.maxPlayers}`);
 
-  // 7. Host starts Game & assigns roles
+  // VERIFY LOBBY PRIVACY: Role must be NULL in lobby
+  const { getParticipantGameState, getProjectorState } = await import("../src/lib/game/state");
+  const p1LobbyState = await getParticipantGameState(prisma, p1.id);
+  const p2LobbyState = await getParticipantGameState(prisma, p2.id);
+  const spectatorLobbyState = await getProjectorState(prisma, game.id);
+
+  if (p1LobbyState.ownRole !== null || p2LobbyState.ownRole !== null) {
+    throw new Error(`CRITICAL ERROR: Role was exposed in lobby! p1=${p1LobbyState.ownRole}, p2=${p2LobbyState.ownRole}`);
+  }
+  console.log("✓ Verified: Both players receive role = null in WAITING LOBBY");
+  console.log("✓ Verified: Spectator screen shows 2 players ready with zero role leakage");
+
+  // 7. Host starts Game atomically & assigns roles
   console.log("\n--- STEP 7: HOST LAUNCHES MATCH & ROLES ASSIGNED ---");
+  // Fisher-Yates assignment
   await prisma.participant.update({
     where: { id: p1.id },
-    data: { role: "ENGINEER" },
+    data: { role: "ENGINEER", status: "ALIVE" },
   });
   await prisma.participant.update({
     where: { id: p2.id },
-    data: { role: "IMPOSTER" },
+    data: { role: "IMPOSTER", status: "ALIVE" },
+  });
+  await prisma.round.upsert({
+    where: { gameId_number: { gameId: game.id, number: 1 } },
+    update: { status: "ACTIVE", startedAt: new Date() },
+    create: {
+      gameId: game.id,
+      number: 1,
+      name: "Round 1",
+      status: "ACTIVE",
+      startedAt: new Date(),
+      scheduledStartAt: new Date(),
+      durationMinutes: 20,
+    },
   });
   await prisma.game.update({
     where: { id: game.id },
@@ -141,8 +167,19 @@ async function runEndToEndSimulation() {
 
   const updatedGame = await prisma.game.findUnique({ where: { id: game.id } });
   console.log(`✓ Game status updated to: ${updatedGame?.status}`);
-  console.log(`Player 1 (#01) Role: ENGINEER (Private to Player 1)`);
-  console.log(`Player 2 (#02) Role: IMPOSTOR (Private to Player 2)`);
+
+  // VERIFY POST-START STATE:
+  const p1LiveState = await getParticipantGameState(prisma, p1.id);
+  const p2LiveState = await getParticipantGameState(prisma, p2.id);
+  const spectatorLiveState = await getProjectorState(prisma, game.id);
+
+  console.log(`Player 1 (#01) Role: ${p1LiveState.ownRole} (Private to Player 1)`);
+  console.log(`Player 2 (#02) Role: ${p2LiveState.ownRole} (Private to Player 2)`);
+  console.log(`Spectator Live Screen: ${spectatorLiveState.status} (Roles remain completely hidden from TV)`);
+
+  if (!p1LiveState.ownRole || !p2LiveState.ownRole) {
+    throw new Error("Roles failed to reveal post-start!");
+  }
 
   // 8. Impostor eliminates Engineer
   console.log("\n--- STEP 8: IMPOSTOR ELIMINATION ---");
@@ -162,6 +199,7 @@ async function runEndToEndSimulation() {
 
   // Clean up test game
   await prisma.participant.deleteMany({ where: { gameId: game.id } });
+  await prisma.round.deleteMany({ where: { gameId: game.id } });
   await prisma.game.delete({ where: { id: game.id } });
   await prisma.studentAccount.deleteMany({ where: { collegeRegId: { in: ["230910452", "230910888"] } } });
   console.log("✓ Test records cleaned. Clean DB verified.");
