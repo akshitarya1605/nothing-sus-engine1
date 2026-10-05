@@ -15,6 +15,7 @@ import { computeGlobalTaskProgress, computeParticipantTaskProgress } from "./sco
 import { computeRoundTiming } from "./timers";
 import { startVoting } from "./actions/meetings";
 import { closeVoting, revealResult } from "./actions/voting";
+import { getParticipantProfession } from "./professions";
 
 /**
  * These read functions accept either the raw client or an active
@@ -109,7 +110,15 @@ async function checkAndAutoAdvanceMeeting(gameId: string) {
 // ---------------------------------------------------------------------
 
 export interface ParticipantGameState {
-  identity: { id: string; name: string; code: string; playerNumber: number | null; badge: string | null; batchNumber: number };
+  identity: {
+    id: string;
+    name: string;
+    code: string;
+    playerNumber: number | null;
+    badge: string | null;
+    batchNumber: number;
+    profession: string;
+  };
   ownRole: "ENGINEER" | "IMPOSTER" | null;
   ownStatus: string;
   partnerImpostors?: Array<{
@@ -309,6 +318,7 @@ export async function getParticipantGameState(
       playerNumber: participant.playerNumber,
       badge: participant.badge,
       batchNumber: participant.batchNumber,
+      profession: getParticipantProfession(participant.playerNumber, participant.id),
     },
     ownRole: isLobby ? null : participant.role,
     ownStatus: participant.status,

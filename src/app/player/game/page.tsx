@@ -11,6 +11,15 @@ import { O2PressureTask } from "@/components/game/tasks/O2PressureTask";
 import { CommsSpectralTask } from "@/components/game/tasks/CommsSpectralTask";
 import { ShieldsTask } from "@/components/game/tasks/ShieldsTask";
 import { WiresTask } from "@/components/game/tasks/WiresTask";
+import { EngineCalibrationTask } from "@/components/game/tasks/EngineCalibrationTask";
+import { ThrusterMatrixTask } from "@/components/game/tasks/ThrusterMatrixTask";
+import { DnaSequenceTask } from "@/components/game/tasks/DnaSequenceTask";
+import { ChemicalCentrifugeTask } from "@/components/game/tasks/ChemicalCentrifugeTask";
+import { TelescopeLockTask } from "@/components/game/tasks/TelescopeLockTask";
+import { BreakerGridTask } from "@/components/game/tasks/BreakerGridTask";
+import { VoltageRegulatorTask } from "@/components/game/tasks/VoltageRegulatorTask";
+import { HydroPipeTask } from "@/components/game/tasks/HydroPipeTask";
+import { FilterDecontamTask } from "@/components/game/tasks/FilterDecontamTask";
 
 interface ParticipantState {
   identity: {
@@ -19,6 +28,7 @@ interface ParticipantState {
     code: string;
     playerNumber?: number | null;
     badge?: string | null;
+    profession?: string;
   };
   ownRole: "ENGINEER" | "IMPOSTER" | null;
   ownStatus: string;
@@ -361,8 +371,13 @@ export default function PlayerGameConsolePage() {
               <div className="font-bold text-white text-sm sm:text-base leading-tight truncate max-w-[150px]">
                 {state?.identity.name}
               </div>
-              <div className="text-[10px] font-mono text-zinc-400">
-                ROOM: <span className="text-red-400 font-bold">{state?.game.roomCode || "ARENA"}</span>
+              <div className="text-[10px] font-mono text-zinc-400 flex items-center gap-1.5">
+                <span>ROOM: <span className="text-red-400 font-bold">{state?.game.roomCode || "ARENA"}</span></span>
+                {state?.identity.profession && (
+                  <span className="px-1.5 py-0.2 rounded bg-cyan-950/70 text-cyan-300 border border-cyan-500/40 text-[9px] font-bold">
+                    {state.identity.profession}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -893,13 +908,58 @@ export default function PlayerGameConsolePage() {
                   onSuccess={() => handleMiniGameCompleted(activePlayTask.taskId)}
                   onCancel={() => setActivePlayTask(null)}
                 />
+              ) : activePlayTask.title.includes("CALIBRATE ENGINES") || activePlayTask.title.includes("ENGINE") ? (
+                <EngineCalibrationTask
+                  onSuccess={() => handleMiniGameCompleted(activePlayTask.taskId)}
+                  onCancel={() => setActivePlayTask(null)}
+                />
+              ) : activePlayTask.title.includes("THRUSTER") ? (
+                <ThrusterMatrixTask
+                  onSuccess={() => handleMiniGameCompleted(activePlayTask.taskId)}
+                  onCancel={() => setActivePlayTask(null)}
+                />
+              ) : activePlayTask.title.includes("DNA") ? (
+                <DnaSequenceTask
+                  onSuccess={() => handleMiniGameCompleted(activePlayTask.taskId)}
+                  onCancel={() => setActivePlayTask(null)}
+                />
+              ) : activePlayTask.title.includes("CENTRIFUGE") || activePlayTask.title.includes("CHEMICAL") ? (
+                <ChemicalCentrifugeTask
+                  onSuccess={() => handleMiniGameCompleted(activePlayTask.taskId)}
+                  onCancel={() => setActivePlayTask(null)}
+                />
+              ) : activePlayTask.title.includes("TELESCOPE") || activePlayTask.title.includes("PULSAR") ? (
+                <TelescopeLockTask
+                  onSuccess={() => handleMiniGameCompleted(activePlayTask.taskId)}
+                  onCancel={() => setActivePlayTask(null)}
+                />
+              ) : activePlayTask.title.includes("COMMS") || activePlayTask.title.includes("SPECTRAL LOCK") ? (
+                <CommsSpectralTask
+                  onSuccess={() => handleMiniGameCompleted(activePlayTask.taskId)}
+                  onCancel={() => setActivePlayTask(null)}
+                />
+              ) : activePlayTask.title.includes("BREAKER") ? (
+                <BreakerGridTask
+                  onSuccess={() => handleMiniGameCompleted(activePlayTask.taskId)}
+                  onCancel={() => setActivePlayTask(null)}
+                />
+              ) : activePlayTask.title.includes("VOLTAGE") || activePlayTask.title.includes("REGULATOR") ? (
+                <VoltageRegulatorTask
+                  onSuccess={() => handleMiniGameCompleted(activePlayTask.taskId)}
+                  onCancel={() => setActivePlayTask(null)}
+                />
               ) : activePlayTask.title.includes("O2") || activePlayTask.title.includes("PRESSURE") ? (
                 <O2PressureTask
                   onSuccess={() => handleMiniGameCompleted(activePlayTask.taskId)}
                   onCancel={() => setActivePlayTask(null)}
                 />
-              ) : activePlayTask.title.includes("COMMS") || activePlayTask.title.includes("SPECTRAL") ? (
-                <CommsSpectralTask
+              ) : activePlayTask.title.includes("HYDRO") || activePlayTask.title.includes("JUNCTION") ? (
+                <HydroPipeTask
+                  onSuccess={() => handleMiniGameCompleted(activePlayTask.taskId)}
+                  onCancel={() => setActivePlayTask(null)}
+                />
+              ) : activePlayTask.title.includes("FILTER") || activePlayTask.title.includes("DECONTAM") ? (
+                <FilterDecontamTask
                   onSuccess={() => handleMiniGameCompleted(activePlayTask.taskId)}
                   onCancel={() => setActivePlayTask(null)}
                 />

@@ -6,6 +6,7 @@ import { handleRoute, parseJsonBody } from "@/lib/api/respond";
 import { GameEngineError } from "@/lib/game/errors";
 import { publishEvent } from "@/lib/game/events/publisher";
 import { generateUniqueGameBadge } from "@/lib/game/badges";
+import { getParticipantProfession, getTasksForProfession } from "@/lib/game/professions";
 import { z } from "zod";
 import { randomInt } from "node:crypto";
 
@@ -127,16 +128,22 @@ export async function POST(request: Request) {
     });
 
     if (isMidgame) {
+      const profession = getParticipantProfession(assignedNumber, participant.id);
+      const assignedTaskDefs = getTasksForProfession(profession);
       const activeTasks = await prismaWrite.task.findMany({
         where: { gameId: game.id, status: "AVAILABLE" },
       });
-      for (const t of activeTasks) {
+      const activeMap = new Map(activeTasks.map((t) => [t.title, t.id]));
+
+      for (const tDef of assignedTaskDefs) {
+        const taskId = activeMap.get(tDef.title);
+        if (!taskId) continue;
         await prismaWrite.participantTask.upsert({
-          where: { participantId_taskId: { participantId: participant.id, taskId: t.id } },
+          where: { participantId_taskId: { participantId: participant.id, taskId } },
           update: {},
           create: {
             participantId: participant.id,
-            taskId: t.id,
+            taskId,
             status: "AVAILABLE",
           },
         });

@@ -9,6 +9,7 @@ import { writeAuditLog } from "@/lib/game/audit";
 import { publishEvent } from "@/lib/game/events/publisher";
 import { generateUniqueGameBadge } from "@/lib/game/badges";
 import { hashOtp } from "@/lib/game/otp";
+import { ALL_TASKS, getParticipantProfession, getTasksForProfession } from "@/lib/game/professions";
 
 export const dynamic = "force-dynamic";
 
@@ -96,53 +97,10 @@ export async function POST() {
         },
       });
 
-      // 7b. Seed all interactive mini-game tasks and assign to all participants
-      const DEFAULT_TASKS = [
-        {
-          title: "REACTOR CIRCUIT ROUTER",
-          description: "Align power conduits to route plasma safely to the main core.",
-          points: 25,
-          difficulty: TaskDifficulty.HARD,
-          otp: "7492",
-        },
-        {
-          title: "O2 PRESSURE MATRIX",
-          description: "Equalize chamber psi valves and execute membrane purge sequence.",
-          points: 20,
-          difficulty: TaskDifficulty.MEDIUM,
-          otp: "5183",
-        },
-        {
-          title: "COMMS SPECTRAL LOCK",
-          description: "Match frequency, phase, and harmonics to calibrate sub-space communications.",
-          points: 25,
-          difficulty: TaskDifficulty.HARD,
-          otp: "8921",
-        },
-        {
-          title: "SHIELDS DEFLECTOR",
-          description: "Prime deflector shield emitters to restore hull integrity.",
-          points: 15,
-          difficulty: TaskDifficulty.EASY,
-          otp: "3367",
-        },
-        {
-          title: "WIRE ROUTING",
-          description: "Connect matching electrical conduits across primary distribution nodes.",
-          points: 15,
-          difficulty: TaskDifficulty.EASY,
-          otp: "4820",
-        },
-        {
-          title: "SYSTEM OVERRIDE",
-          description: "Solve terminal cryptographic sequence override.",
-          points: 10,
-          difficulty: TaskDifficulty.EASY,
-          otp: "32",
-        },
-      ];
+      // 7b. Seed all 15 mini-game tasks and assign each participant their 6 tasks (3 common + 3 profession-specific)
+      const taskMap = new Map<string, string>(); // title -> taskId
 
-      for (const tDef of DEFAULT_TASKS) {
+      for (const tDef of ALL_TASKS) {
         let task = await tx.task.findFirst({
           where: { gameId, title: tDef.title },
         });
@@ -161,14 +119,22 @@ export async function POST() {
             },
           });
         }
+        taskMap.set(tDef.title, task.id);
+      }
 
-        for (const p of participants) {
+      for (const p of participants) {
+        const profession = getParticipantProfession(p.playerNumber, p.id);
+        const assignedTaskDefs = getTasksForProfession(profession);
+
+        for (const tDef of assignedTaskDefs) {
+          const taskId = taskMap.get(tDef.title);
+          if (!taskId) continue;
           await tx.participantTask.upsert({
-            where: { participantId_taskId: { participantId: p.id, taskId: task.id } },
+            where: { participantId_taskId: { participantId: p.id, taskId } },
             update: {},
             create: {
               participantId: p.id,
-              taskId: task.id,
+              taskId,
               status: ParticipantTaskStatus.AVAILABLE,
             },
           });
