@@ -74,7 +74,13 @@ export interface GameEventPayloads {
 
   GAME_PAUSED: { reason: string | null };
   GAME_RESUMED: Record<string, never>;
-  GAME_FINISHED: { winner: string; reason: string };
+  GAME_FINISHED: {
+    winner: string;
+    reason: string;
+    championParticipantId?: string | null;
+    championName?: string | null;
+    championBadge?: string | null;
+  };
 
   ANNOUNCEMENT_CREATED: { message: string };
 

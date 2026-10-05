@@ -36,7 +36,7 @@ const TRANSITIONS: Record<GameStatus, GameStatus[]> = {
   LIVE: [GameStatus.MEETING, GameStatus.PAUSED, GameStatus.FINISHED],
   MEETING: [GameStatus.VOTING, GameStatus.PAUSED, GameStatus.FINISHED],
   VOTING: [GameStatus.REVEAL, GameStatus.PAUSED, GameStatus.FINISHED],
-  REVEAL: [GameStatus.ROUND_COMPLETE, GameStatus.PAUSED, GameStatus.FINISHED],
+  REVEAL: [GameStatus.LIVE, GameStatus.ROUND_COMPLETE, GameStatus.PAUSED, GameStatus.FINISHED],
   ROUND_COMPLETE: [GameStatus.LIVE, GameStatus.FINISHED],
   PAUSED: [
     GameStatus.LIVE,

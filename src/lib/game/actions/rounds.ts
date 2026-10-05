@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { GameStatus, RoundStatus, RoundPhase, ParticipantStatus } from "@prisma/client";
+import { GameStatus, RoundStatus, RoundPhase, ParticipantStatus, ParticipantRole } from "@prisma/client";
 import { prismaWrite as defaultPrisma } from "../../db/prisma";
 import { GameEngineError } from "../errors";
 import { assertValidTransition } from "../transitions";
@@ -198,12 +198,87 @@ export async function completeRound(gameId: string, prisma: PrismaClient = defau
  * than a generic rule engine — see docs/GAME_ENGINE.md "Win conditions"
  * for what each configured value means.
  */
-type Winner = "ENGINEERS" | "IMPOSTERS" | "NONE";
+export type Winner = "ENGINEERS" | "IMPOSTERS" | "NONE";
+
+export async function resolveSingleWinnerTx(
+  tx: Prisma.TransactionClient,
+  gameId: string,
+  winner: Winner,
+  preferredCandidateId?: string | null,
+): Promise<string | null> {
+  if (preferredCandidateId) {
+    const candidate = await tx.participant.findUnique({ where: { id: preferredCandidateId } });
+    if (candidate && candidate.gameId === gameId) return candidate.id;
+  }
+
+  if (winner === "IMPOSTERS") {
+    // 1. Alive impostor with most recent kill
+    const impostor = await tx.participant.findFirst({
+      where: { gameId, role: ParticipantRole.IMPOSTER, status: ParticipantStatus.ALIVE },
+      orderBy: [{ lastKillAt: "desc" }, { createdAt: "asc" }, { id: "asc" }],
+    });
+    if (impostor) return impostor.id;
+
+    // Fallback: any impostor
+    const anyImpostor = await tx.participant.findFirst({
+      where: { gameId, role: ParticipantRole.IMPOSTER },
+      orderBy: [{ lastKillAt: "desc" }, { createdAt: "asc" }, { id: "asc" }],
+    });
+    if (anyImpostor) return anyImpostor.id;
+  }
+
+  if (winner === "ENGINEERS") {
+    // 1. Alive engineer with highest score
+    const topScorer = await tx.participantTask.groupBy({
+      by: ["participantId"],
+      where: {
+        task: { gameId },
+        status: "COMPLETED",
+        participant: { gameId, role: ParticipantRole.ENGINEER, status: ParticipantStatus.ALIVE },
+      },
+      _sum: { score: true },
+      orderBy: { _sum: { score: "desc" } },
+      take: 1,
+    });
+    if (topScorer.length > 0 && topScorer[0].participantId) {
+      return topScorer[0].participantId;
+    }
+
+    // Fallback: alive engineer sorted deterministically
+    const aliveEng = await tx.participant.findFirst({
+      where: { gameId, role: ParticipantRole.ENGINEER, status: ParticipantStatus.ALIVE },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+    if (aliveEng) return aliveEng.id;
+  }
+
+  // General fallback: alive participant with highest completed task score, then earliest joined
+  const anyTop = await tx.participantTask.groupBy({
+    by: ["participantId"],
+    where: {
+      task: { gameId },
+      status: "COMPLETED",
+      participant: { gameId, status: ParticipantStatus.ALIVE },
+    },
+    _sum: { score: true },
+    orderBy: { _sum: { score: "desc" } },
+    take: 1,
+  });
+  if (anyTop.length > 0 && anyTop[0].participantId) {
+    return anyTop[0].participantId;
+  }
+
+  const anyAlive = await tx.participant.findFirst({
+    where: { gameId, status: ParticipantStatus.ALIVE },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  return anyAlive?.id ?? null;
+}
 
 /** Shared finalization — round cleanup, result row, GAME_FINISHED event.
  * `finishGame` computes the winner from the win conditions; `declareWinner`
  * passes the host's choice straight through. */
-async function finalizeGameTx(
+export async function finalizeGameTx(
   tx: Prisma.TransactionClient,
   gameId: string,
   winner: Winner,
@@ -225,6 +300,10 @@ async function finalizeGameTx(
     take: 2,
   });
 
+  const championParticipantId =
+    opts.championParticipantId ??
+    (await resolveSingleWinnerTx(tx, gameId, winner, opts.championParticipantId));
+
   await tx.round.updateMany({
     where: { gameId, status: { not: RoundStatus.COMPLETE } },
     data: { status: RoundStatus.COMPLETE, endedAt: new Date() },
@@ -238,14 +317,14 @@ async function finalizeGameTx(
       winner,
       reason,
       declaredByHost: opts.declaredByHost,
-      championParticipantId: opts.championParticipantId ?? null,
+      championParticipantId: championParticipantId ?? null,
     },
     create: {
       gameId,
       winner,
       reason,
       declaredByHost: opts.declaredByHost,
-      championParticipantId: opts.championParticipantId ?? null,
+      championParticipantId: championParticipantId ?? null,
       topScorerParticipantId: topScorer[0]?.participantId,
       runnerUpParticipantId: topScorer[1]?.participantId,
       stats: { aliveEngineers, aliveImposters, totalTasks, completedTasks },
@@ -257,10 +336,27 @@ async function finalizeGameTx(
     actorType: ActorType.ADMIN,
     actorId: opts.actorId ?? "admin",
     action: opts.declaredByHost ? "winner_declared" : "game_finished",
-    metadata: { winner, reason, declaredByHost: opts.declaredByHost },
+    metadata: { winner, reason, declaredByHost: opts.declaredByHost, championParticipantId },
   });
 
-  await publishEvent(tx, { gameId, type: "GAME_FINISHED", payload: { winner, reason } });
+  const champion = championParticipantId
+    ? await tx.participant.findUnique({
+        where: { id: championParticipantId },
+        select: { id: true, name: true, badge: true, role: true },
+      })
+    : null;
+
+  await publishEvent(tx, {
+    gameId,
+    type: "GAME_FINISHED",
+    payload: {
+      winner,
+      reason,
+      championParticipantId,
+      championName: champion?.name ?? null,
+      championBadge: champion?.badge ?? null,
+    },
+  });
 }
 
 export async function finishGame(gameId: string, prisma: PrismaClient = defaultPrisma) {

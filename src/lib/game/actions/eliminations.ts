@@ -4,6 +4,8 @@ import { prismaWrite as defaultPrisma } from "../../db/prisma";
 import { GameEngineError } from "../errors";
 import { writeAuditLog, ActorType } from "../audit";
 import { publishEvent } from "../events/publisher";
+import { LIVE_PLAY_STATUSES } from "../permissions";
+import { finalizeGameTx } from "./rounds";
 
 type TxClient = Prisma.TransactionClient;
 
@@ -230,6 +232,9 @@ export async function eliminateByPlayerNumber(
     if (target.id === impostor.id) {
       throw new GameEngineError("VALIDATION", "You cannot eliminate yourself");
     }
+    if (target.role === ParticipantRole.IMPOSTER) {
+      throw new GameEngineError("FORBIDDEN", "Cannot eliminate a fellow Impostor");
+    }
 
     await tx.participant.update({
       where: { id: impostor.id },
@@ -278,4 +283,106 @@ export async function unlockWeapon(
     return { success: true };
   });
 }
+
+/**
+ * Impostor-triggered elimination by entering the victim's 4-char Badge ID (e.g. K7Q4).
+ * Validates role, alive status, game state, badge existence, cooldown, atomic elimination,
+ * and immediate win condition check.
+ */
+export async function eliminateByBadge(
+  gameId: string,
+  input: { impostorId: string; targetBadge: string },
+  prisma: PrismaClient = defaultPrisma,
+) {
+  return prisma.$transaction(async (tx) => {
+    const game = await tx.game.findUnique({ where: { id: gameId }, include: { config: true } });
+    if (!game) throw new GameEngineError("NOT_FOUND", "Game not found");
+    if (!LIVE_PLAY_STATUSES.includes(game.status)) {
+      throw new GameEngineError("CONFLICT", `Game is not in active play (status: ${game.status})`);
+    }
+
+    const impostor = await tx.participant.findUnique({ where: { id: input.impostorId } });
+    if (!impostor || impostor.gameId !== gameId) {
+      throw new GameEngineError("NOT_FOUND", "Impostor not found in this game");
+    }
+    if (impostor.role !== ParticipantRole.IMPOSTER) {
+      throw new GameEngineError("FORBIDDEN", "Only Impostors can perform player actions");
+    }
+    if (impostor.status !== ParticipantStatus.ALIVE) {
+      throw new GameEngineError("FORBIDDEN", "Eliminated players cannot perform actions");
+    }
+
+    const cooldownSeconds = game.config?.killCooldownSeconds ?? 60;
+    const cooldownMs = cooldownSeconds * 1000;
+    if (impostor.lastKillAt) {
+      const elapsed = Date.now() - new Date(impostor.lastKillAt).getTime();
+      if (elapsed < cooldownMs) {
+        const remainingSec = Math.ceil((cooldownMs - elapsed) / 1000);
+        throw new GameEngineError("CONFLICT", `Action on cooldown! Wait ${remainingSec}s`);
+      }
+    }
+
+    const normalizedBadge = input.targetBadge.trim().toUpperCase().replace(/^#/, "");
+    if (!normalizedBadge || normalizedBadge.length < 2) {
+      throw new GameEngineError("VALIDATION", "Invalid target badge ID");
+    }
+
+    const target = await tx.participant.findFirst({
+      where: {
+        gameId,
+        badge: normalizedBadge,
+      },
+    });
+
+    if (!target) {
+      throw new GameEngineError("NOT_FOUND", `No player found with Badge #${normalizedBadge}`);
+    }
+    if (target.id === impostor.id) {
+      throw new GameEngineError("VALIDATION", "You cannot target your own badge");
+    }
+    if (target.role === ParticipantRole.IMPOSTER) {
+      throw new GameEngineError("FORBIDDEN", "Cannot eliminate a fellow Impostor");
+    }
+    if (target.status !== ParticipantStatus.ALIVE) {
+      throw new GameEngineError("CONFLICT", `Player #${normalizedBadge} is already eliminated`);
+    }
+
+    await tx.participant.update({
+      where: { id: impostor.id },
+      data: { lastKillAt: new Date() },
+    });
+
+    const elimination = await eliminateParticipantTx(tx, gameId, {
+      participantId: target.id,
+      method: EliminationMethod.ABILITY,
+      actorId: impostor.id,
+    });
+
+    const [aliveEngineers, aliveImposters] = await Promise.all([
+      tx.participant.count({ where: { gameId, status: ParticipantStatus.ALIVE, role: ParticipantRole.ENGINEER } }),
+      tx.participant.count({ where: { gameId, status: ParticipantStatus.ALIVE, role: ParticipantRole.IMPOSTER } }),
+    ]);
+
+    let gameEnded = false;
+    if (aliveImposters >= aliveEngineers) {
+      // Impostors win! Decisive eliminator is the single winner!
+      await finalizeGameTx(tx, gameId, "IMPOSTERS", "Impostors equal or outnumber remaining engineers.", {
+        declaredByHost: false,
+        championParticipantId: impostor.id,
+        actorId: impostor.id,
+      });
+      gameEnded = true;
+    }
+
+    return {
+      success: true,
+      target: { id: target.id, name: target.name, badge: target.badge },
+      elimination,
+      gameEnded,
+      aliveEngineers,
+      aliveImposters,
+    };
+  });
+}
+
 

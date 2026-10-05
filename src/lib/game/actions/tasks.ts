@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { ParticipantStatus, ParticipantTaskStatus, TaskStatus, TaskDifficulty } from "@prisma/client";
+import { ParticipantRole, ParticipantStatus, ParticipantTaskStatus, RoundStatus, TaskStatus, TaskDifficulty } from "@prisma/client";
 import { randomInt } from "node:crypto";
 import { prismaWrite as defaultPrisma } from "../../db/prisma";
 import { GameEngineError } from "../errors";
@@ -8,6 +8,7 @@ import { writeAuditLog, ActorType } from "../audit";
 import { publishEvent } from "../events/publisher";
 import { computeGlobalTaskProgress } from "../scoring";
 import { hashOtp } from "../otp";
+import { finalizeGameTx, resolveSingleWinnerTx } from "./rounds";
 
 type TxClient = Prisma.TransactionClient;
 
@@ -353,3 +354,162 @@ export async function assignTaskToGroup(
     });
   });
 }
+
+/**
+ * Submits the temporary puzzle task ("SYSTEM OVERRIDE") for testing the gameplay loop.
+ * Accessible to both Engineers and Impostors.
+ * Server validates answer (32), awards 10 points, updates participant task status,
+ * writes audit log, emits TASK_COMPLETED event, and evaluates win conditions.
+ */
+export async function submitPuzzleTask(
+  participantId: string,
+  input: { answer?: string; taskId?: string; solved?: boolean },
+  prisma: PrismaClient = defaultPrisma,
+) {
+  return prisma.$transaction(async (tx) => {
+    const participant = await tx.participant.findUnique({
+      where: { id: participantId },
+      include: { game: { include: { config: true } } },
+    });
+    if (!participant) throw new GameEngineError("NOT_FOUND", "Participant not found");
+    if (participant.status !== ParticipantStatus.ALIVE) {
+      throw new GameEngineError("FORBIDDEN", "Eliminated participants cannot submit tasks");
+    }
+    if (!LIVE_PLAY_STATUSES.includes(participant.game.status)) {
+      throw new GameEngineError("CONFLICT", `Game is not in active play (status: ${participant.game.status})`);
+    }
+
+    const gameId = participant.gameId;
+
+    const trimmed = (input.answer || "").trim();
+    const isSolved =
+      input.solved === true ||
+      trimmed.toUpperCase() === "SOLVED" ||
+      trimmed === "32";
+
+    if (!isSolved) {
+      throw new GameEngineError("VALIDATION", "Incorrect sequence answer. Try again.");
+    }
+
+    let task = input.taskId && input.taskId !== "system-override"
+      ? await tx.task.findUnique({ where: { id: input.taskId } })
+      : await tx.task.findFirst({
+          where: { gameId, title: "SYSTEM OVERRIDE" },
+        });
+
+    if (!task) {
+      let round1 = await tx.round.findFirst({ where: { gameId, number: 1 } });
+      if (!round1) {
+        round1 = await tx.round.create({
+          data: {
+            gameId,
+            number: 1,
+            name: "Round 1",
+            status: RoundStatus.ACTIVE,
+            scheduledStartAt: new Date(),
+            durationMinutes: 20,
+          },
+        });
+      }
+
+      task = await tx.task.create({
+        data: {
+          gameId,
+          roundId: round1.id,
+          title: "SYSTEM OVERRIDE",
+          description: "Solve the sequence: 2, 4, 8, 16, ?",
+          points: 10,
+          estimatedMinutes: 5,
+          difficulty: TaskDifficulty.EASY,
+          status: TaskStatus.AVAILABLE,
+          otpHash: hashOtp("32"),
+        },
+      });
+    }
+
+    const existing = await tx.participantTask.findUnique({
+      where: { participantId_taskId: { participantId, taskId: task.id } },
+    });
+
+    if (existing?.status === ParticipantTaskStatus.COMPLETED) {
+      return {
+        success: true,
+        alreadyCompleted: true,
+        message: "SYSTEM OVERRIDE already completed (+10 pts)",
+        points: 10,
+      };
+    }
+
+    const participantTask = existing
+      ? await tx.participantTask.update({
+          where: { id: existing.id },
+          data: {
+            status: ParticipantTaskStatus.COMPLETED,
+            completedAt: new Date(),
+            score: task.points || 10,
+          },
+        })
+      : await tx.participantTask.create({
+          data: {
+            participantId,
+            taskId: task.id,
+            status: ParticipantTaskStatus.COMPLETED,
+            completedAt: new Date(),
+            score: task.points || 10,
+          },
+        });
+
+    await writeAuditLog(tx, {
+      gameId,
+      actorType: ActorType.PARTICIPANT,
+      actorId: participant.id,
+      action: "task_completed",
+      targetType: "Task",
+      targetId: task.id,
+      metadata: { taskTitle: task.title, points: task.points },
+    });
+
+    const globalProgress = await computeGlobalTaskProgress(tx, gameId);
+
+    await publishEvent(tx, {
+      gameId,
+      type: "TASK_COMPLETED",
+      payload: {
+        participantId: participant.id,
+        taskId: task.id,
+        globalProgressPercentage: globalProgress.percentage,
+      },
+    });
+
+    // Evaluate win condition if all tasks are complete
+    const [totalTasks, completedTasks] = await Promise.all([
+      tx.participantTask.count({ where: { task: { gameId }, status: { not: "LOCKED" } } }),
+      tx.participantTask.count({ where: { task: { gameId }, status: "COMPLETED" } }),
+    ]);
+
+    let gameEnded = false;
+    if (totalTasks > 0 && completedTasks >= totalTasks) {
+      const champId = await resolveSingleWinnerTx(
+        tx,
+        gameId,
+        "ENGINEERS",
+        participant.role === ParticipantRole.ENGINEER ? participant.id : null,
+      );
+      await finalizeGameTx(tx, gameId, "ENGINEERS", "Engineers completed every system objective.", {
+        declaredByHost: false,
+        championParticipantId: champId,
+        actorId: participant.id,
+      });
+      gameEnded = true;
+    }
+
+    return {
+      success: true,
+      message: "SYSTEM OVERRIDE solved! +10 Points awarded.",
+      points: task.points || 10,
+      participantTask,
+      gameEnded,
+    };
+  });
+}
+

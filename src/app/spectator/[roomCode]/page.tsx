@@ -15,8 +15,26 @@ interface ProjectorState {
   globalProgress: { completed: number; inPlay: number; percentage: number };
   aliveCount: number;
   eliminatedCount: number;
-  playerRoster?: Array<{ id: string; name: string; playerNumber?: number | null; status: string }>;
-  meetingState: { status: string; type: string; calledBy?: string | null } | null;
+  playerRoster?: Array<{ id: string; name: string; playerNumber?: number | null; badge?: string | null; status: string }>;
+  meetingState: {
+    id: string;
+    status: string;
+    type: string;
+    phase: "DISCUSSION" | "VOTING" | "REVEAL";
+    secondsRemaining: number;
+    discussionDurationSeconds: number;
+    votingDurationSeconds: number;
+    calledByName: string | null;
+    reason: string | null;
+    votes: Array<{
+      id: string;
+      voterName: string;
+      voterBadge: string | null;
+      targetName: string | null;
+      targetBadge: string | null;
+      isSkip: boolean;
+    }>;
+  } | null;
   votingState: { isOpen: boolean; votesCastCount?: number; totalEligibleCount?: number } | null;
   eliminationReveal: { participantId: string; name: string; role: "ENGINEER" | "IMPOSTER" } | null;
   finalResult: {
@@ -25,6 +43,7 @@ interface ProjectorState {
     stats: unknown;
     declaredByHost: boolean;
     championName: string | null;
+    championBadge: string | null;
   } | null;
 }
 
@@ -197,33 +216,81 @@ export default function SpectatorRoomPage({
             </motion.div>
           )}
 
-          {/* STAGE 3: EMERGENCY MEETING / DISCUSSION */}
+          {/* STAGE 3: EMERGENCY MEETING / DISCUSSION / VOTING */}
           {!showReveal && (isMeeting || isVoting) && (
             <motion.div
               key="meeting"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="text-center space-y-8 max-w-3xl"
+              className="text-center space-y-6 max-w-4xl w-full"
             >
-              <div className="inline-block p-4 rounded-full bg-red-950/80 border-2 border-red-500 animate-pulse shadow-[0_0_50px_rgba(239,68,68,0.5)]">
+              <div className="inline-block p-3 rounded-full bg-red-950/80 border-2 border-red-500 animate-pulse shadow-[0_0_50px_rgba(239,68,68,0.5)]">
                 <span className="text-xs font-mono font-black uppercase tracking-widest text-red-400">
-                  CRITICAL ALERT
+                  CRITICAL EMERGENCY MEETING
                 </span>
               </div>
-              <h2 className="text-5xl sm:text-6xl font-black text-white uppercase tracking-tight">
-                {isVoting ? "VOTING IN PROGRESS" : "EMERGENCY MEETING"}
-              </h2>
-              <p className="text-lg text-zinc-300 max-w-xl mx-auto">
-                {isVoting
-                  ? "All active players are casting confidential votes on their personal consoles."
-                  : "Floor open for interrogation. Discuss who is sabotaging campus systems."}
-              </p>
-              {isVoting && state?.votingState && (
-                <div className="font-mono text-sm text-zinc-400 bg-zinc-900 border border-zinc-800 px-6 py-3 rounded-xl inline-block">
-                  Votes Recorded: <span className="text-white font-bold">{state.votingState.votesCastCount || 0}</span> Cast
+
+              <div>
+                <h2 className="text-5xl sm:text-6xl font-black text-white uppercase tracking-tight">
+                  {state?.meetingState?.phase === "DISCUSSION"
+                    ? "DISCUSS & INTERROGATE"
+                    : state?.meetingState?.phase === "VOTING"
+                    ? "VOTING FLOOR OPEN"
+                    : "EMERGENCY CONCLUDED"}
+                </h2>
+                <div className="flex items-center justify-center gap-3 mt-3">
+                  <span className="font-mono text-2xl sm:text-3xl font-black text-yellow-400 bg-yellow-950/60 border border-yellow-500/40 px-4 py-1 rounded-xl">
+                    ⏱ {state?.meetingState?.secondsRemaining ?? 0}s REMAINING
+                  </span>
+                  <span className="text-xs font-mono text-zinc-400 uppercase tracking-widest bg-zinc-900 border border-zinc-800 px-3 py-2 rounded-xl">
+                    {state?.meetingState?.phase === "DISCUSSION" ? "30s Discussion Period" : "60s Live Ballot"}
+                  </span>
                 </div>
-              )}
+              </div>
+
+              {/* LIVE VOTES MATRIX (sabke votes visible honge) */}
+              <div className="p-6 rounded-3xl border border-zinc-800 bg-zinc-950/90 shadow-2xl space-y-4 text-left">
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">
+                    PUBLIC BALLOT MATRIX ({state?.meetingState?.votes?.length || 0} Votes Cast)
+                  </span>
+                  <span className="text-[11px] font-mono text-emerald-400 font-bold animate-pulse">
+                    LIVE SYNCHRONIZATION
+                  </span>
+                </div>
+
+                {(!state?.meetingState?.votes || state.meetingState.votes.length === 0) ? (
+                  <div className="py-8 text-center text-zinc-500 font-mono text-xs">
+                    {state?.meetingState?.phase === "DISCUSSION"
+                      ? "Chatting and discussion active on mobile consoles. Voting unlocks when timer hits zero."
+                      : "Awaiting incoming votes from player consoles..."}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto pr-1">
+                    {state.meetingState.votes.map((v) => (
+                      <div
+                        key={v.id}
+                        className="p-2.5 rounded-xl border border-zinc-800 bg-zinc-900/80 font-mono text-xs flex items-center justify-between"
+                      >
+                        <span className="text-zinc-200 font-bold truncate">
+                          {v.voterBadge ? `#${v.voterBadge}` : ""} {v.voterName}
+                        </span>
+                        <span className="text-zinc-500 mx-1">→</span>
+                        <span
+                          className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                            v.isSkip
+                              ? "bg-zinc-800 text-zinc-400 border border-zinc-700"
+                              : "bg-red-950/90 text-red-300 border border-red-500/40"
+                          }`}
+                        >
+                          {v.isSkip ? "SKIPPED" : `${v.targetBadge ? `#${v.targetBadge}` : ""} ${v.targetName}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </motion.div>
           )}
 
@@ -269,8 +336,8 @@ export default function SpectatorRoomPage({
                         : "bg-zinc-900/80 border-zinc-800 text-zinc-200"
                     }`}
                   >
-                    <div className="text-[10px] text-zinc-500 font-bold">
-                      #{p.playerNumber ? String(p.playerNumber).padStart(2, "0") : "--"}
+                    <div className="text-[10px] text-zinc-400 font-bold">
+                      #{p.badge || (p.playerNumber ? String(p.playerNumber).padStart(2, "0") : "--")}
                     </div>
                     <div className="font-semibold truncate mt-1 text-white">{p.name}</div>
                   </div>
@@ -279,7 +346,7 @@ export default function SpectatorRoomPage({
             </motion.div>
           )}
 
-          {/* STAGE 5: GAME OVER / RESULTS */}
+          {/* STAGE 5: GAME OVER / SINGLE WINNER SPOTLIGHT */}
           {isFinished && state?.finalResult && (
             <motion.div
               key="finished"
@@ -287,15 +354,29 @@ export default function SpectatorRoomPage({
               animate={{ opacity: 1, scale: 1 }}
               className="text-center space-y-6 max-w-3xl"
             >
-              <div className="text-xs font-mono tracking-widest uppercase text-red-400 bg-red-950/60 border border-red-500/30 px-3 py-1 rounded inline-block">
+              <div className="text-xs font-mono tracking-widest uppercase text-yellow-400 bg-yellow-950/60 border border-yellow-500/30 px-3 py-1 rounded inline-block">
                 MATCH CONCLUDED
               </div>
-              <h2 className="text-6xl font-black text-white uppercase tracking-tight">
-                {state.finalResult.winner === "ENGINEERS" ? "ENGINEERS WIN" : "IMPOSTORS WIN"}
-              </h2>
-              <p className="text-lg text-zinc-400 max-w-xl mx-auto">
+              <div className="space-y-3">
+                <div className="text-sm font-mono tracking-widest text-zinc-400 uppercase">
+                  DECISIVE WINNER
+                </div>
+                <h2 className="text-5xl sm:text-7xl font-black text-white uppercase tracking-tight drop-shadow-[0_0_40px_rgba(255,255,255,0.2)]">
+                  WINNER
+                </h2>
+                <div className="font-mono text-4xl sm:text-6xl font-black text-yellow-400 tracking-wider">
+                  {state.finalResult.championBadge ? `#${state.finalResult.championBadge}` : ""}
+                  {state.finalResult.championName ? ` ${state.finalResult.championName}` : (state.finalResult.winner || "CHAMPION")}
+                </div>
+              </div>
+
+              <p className="text-lg text-zinc-300 max-w-xl mx-auto font-mono">
                 {state.finalResult.reason}
               </p>
+
+              <div className="inline-block px-4 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-400 uppercase tracking-widest">
+                Victorious Faction: {state.finalResult.winner}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

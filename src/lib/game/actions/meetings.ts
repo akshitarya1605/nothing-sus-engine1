@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
-import { GameStatus, MeetingStatus, MeetingType, RoundStatus, RoundPhase } from "@prisma/client";
+import { GameStatus, MeetingStatus, MeetingType, ParticipantStatus, RoundStatus, RoundPhase } from "@prisma/client";
 import { prismaWrite as defaultPrisma } from "../../db/prisma";
 import { GameEngineError } from "../errors";
 import { assertValidTransition } from "../transitions";
@@ -23,6 +23,16 @@ export async function callMeeting(
     const game = await tx.game.findUnique({ where: { id: gameId }, include: { config: true } });
     if (!game) throw new GameEngineError("NOT_FOUND", "Game not found");
     assertValidTransition(game.status, GameStatus.MEETING);
+
+    if (input.calledById) {
+      const caller = await tx.participant.findUnique({ where: { id: input.calledById } });
+      if (!caller || caller.gameId !== gameId) {
+        throw new GameEngineError("NOT_FOUND", "Caller participant not found");
+      }
+      if (caller.status !== ParticipantStatus.ALIVE) {
+        throw new GameEngineError("FORBIDDEN", "Dead or eliminated players cannot call a meeting");
+      }
+    }
 
     if (input.type === MeetingType.EMERGENCY && !game.config?.allowEmergencyMeeting) {
       throw new GameEngineError("FORBIDDEN", "Emergency meetings are disabled for this game");

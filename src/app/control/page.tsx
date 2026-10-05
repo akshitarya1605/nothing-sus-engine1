@@ -52,6 +52,7 @@ interface AdminStateResponse {
     name: string;
     code: string;
     playerNumber: number | null;
+    badge?: string | null;
     collegeRegId?: string | null;
     fullName?: string | null;
     isApproved?: boolean;
@@ -770,7 +771,7 @@ export default function ControlPage() {
                           <div className="space-y-0.5 truncate pr-2">
                             <div className="flex items-center gap-2">
                               <span className="font-mono text-yellow-400 font-black">
-                                #{String(p.playerNumber).padStart(2, "0")}
+                                #{p.badge || String(p.playerNumber).padStart(2, "0")}
                               </span>
                               <span className="font-bold text-white truncate">{p.name}</span>
                             </div>
@@ -904,7 +905,7 @@ export default function ControlPage() {
                           >
                             <div className="truncate pr-2">
                               <span className="text-yellow-400 font-bold mr-1.5">
-                                #{String(p.playerNumber).padStart(2, "0")}
+                                #{p.badge || String(p.playerNumber).padStart(2, "0")}
                               </span>
                               <span>{p.name}</span>
                             </div>
@@ -1069,7 +1070,7 @@ export default function ControlPage() {
                                   <div className="flex items-center gap-1.5">
                                     <span className="font-bold text-red-400">{inGame.roomCode}</span>
                                     <span className="text-yellow-400 font-bold">
-                                      #{String(inGame.playerNumber).padStart(2, "0")}
+                                      #{(inGame as { badge?: string | null }).badge || String(inGame.playerNumber).padStart(2, "0")}
                                     </span>
                                   </div>
                                   <span className="text-[9px] uppercase px-1.5 py-0.2 bg-zinc-800 text-zinc-400 rounded">
@@ -1101,14 +1102,26 @@ export default function ControlPage() {
                               )}
 
                               {person.approvalStatus === "APPROVED" && (
-                                <button
-                                  onClick={() => handlePeopleAction("reject", person.id)}
-                                  disabled={actionBusy === `reject-${person.id}`}
-                                  className="px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-400 text-[11px] transition-colors"
-                                  title="Revoke approval"
-                                >
-                                  Revoke
-                                </button>
+                                <>
+                                  {!inGame && roomCode && (
+                                    <button
+                                      onClick={() => handlePeopleAction("add_to_game", person.id)}
+                                      disabled={actionBusy === `add-${person.id}`}
+                                      className="px-2 py-1 rounded bg-red-950/80 border border-red-500/40 text-red-300 text-[11px] font-bold hover:bg-red-900 transition-colors"
+                                      title="Add player to active room midgame"
+                                    >
+                                      + Add to Game
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handlePeopleAction("reject", person.id)}
+                                    disabled={actionBusy === `reject-${person.id}`}
+                                    className="px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-400 text-[11px] transition-colors"
+                                    title="Revoke approval"
+                                  >
+                                    Revoke
+                                  </button>
+                                </>
                               )}
 
                               {person.approvalStatus === "REJECTED" && (

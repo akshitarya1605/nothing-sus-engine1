@@ -342,6 +342,7 @@ model Participant {
   status ParticipantStatus @default(ALIVE)
 
   playerNumber   Int?
+  badge          String?
   batchNumber    Int       @default(1)
   lastKillAt     DateTime?
   weaponUnlocked Boolean   @default(false)
@@ -366,6 +367,7 @@ model Participant {
 
   @@index([gameId, status])
   @@index([gameId, role])
+  @@index([gameId, badge])
   @@index([groupId])
 }
 

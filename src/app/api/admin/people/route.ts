@@ -3,6 +3,9 @@ import { requireAdmin } from "@/lib/auth/guards";
 import { handleRoute, parseJsonBody } from "@/lib/api/respond";
 import { prismaWrite } from "@/lib/db/prisma";
 import { GameEngineError } from "@/lib/game/errors";
+import { generateUniqueGameBadge } from "@/lib/game/badges";
+import { publishEvent } from "@/lib/game/events/publisher";
+import { randomInt } from "node:crypto";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -106,7 +109,7 @@ export async function GET(request: Request) {
 }
 
 const peopleActionSchema = z.object({
-  action: z.enum(["approve", "reject", "reset_pending", "kick_game", "delete_account"]),
+  action: z.enum(["approve", "reject", "reset_pending", "kick_game", "delete_account", "add_to_game"]),
   accountId: z.string().optional(),
   participantId: z.string().optional(),
 });
@@ -157,6 +160,81 @@ export async function POST(request: Request) {
         where: { id: data.accountId },
       });
       return NextResponse.json({ success: true, message: "Account deleted" });
+    }
+
+    if (data.action === "add_to_game") {
+      if (!data.accountId) throw new GameEngineError("VALIDATION", "accountId required");
+      const student = await prismaWrite.studentAccount.findUnique({
+        where: { id: data.accountId },
+      });
+      if (!student) throw new GameEngineError("NOT_FOUND", "Student account not found");
+
+      const activeGame = await prismaWrite.game.findFirst({
+        where: { status: { not: "FINISHED" } },
+        orderBy: { createdAt: "desc" },
+      });
+      if (!activeGame) {
+        throw new GameEngineError("NOT_FOUND", "No active game room. Create a room first.");
+      }
+
+      const existing = await prismaWrite.participant.findFirst({
+        where: { gameId: activeGame.id, accountId: student.id },
+      });
+      if (existing) {
+        return NextResponse.json({ success: true, message: `${student.fullName} is already in the game.` });
+      }
+
+      const count = await prismaWrite.participant.count({ where: { gameId: activeGame.id } });
+      const badge = await generateUniqueGameBadge(prismaWrite, activeGame.id);
+      const isMidgame = activeGame.status !== "SETUP" && activeGame.status !== "READY";
+
+      const participant = await prismaWrite.participant.create({
+        data: {
+          gameId: activeGame.id,
+          accountId: student.id,
+          name: student.fullName,
+          fullName: student.fullName,
+          collegeRegId: student.collegeRegId,
+          code: `NS-${randomInt(100000, 999999)}`,
+          badge,
+          playerNumber: count + 1,
+          isApproved: true,
+          status: "ALIVE",
+          role: isMidgame ? "ENGINEER" : null,
+        },
+      });
+
+      if (isMidgame) {
+        const activeTasks = await prismaWrite.task.findMany({
+          where: { gameId: activeGame.id, status: "AVAILABLE" },
+        });
+        for (const t of activeTasks) {
+          await prismaWrite.participantTask.upsert({
+            where: { participantId_taskId: { participantId: participant.id, taskId: t.id } },
+            update: {},
+            create: {
+              participantId: participant.id,
+              taskId: t.id,
+              status: "AVAILABLE",
+            },
+          });
+        }
+      }
+
+      try {
+        await publishEvent(prismaWrite, {
+          gameId: activeGame.id,
+          type: "PLAYER_JOINED",
+          payload: { participantId: participant.id, name: student.fullName },
+        });
+      } catch {
+        /* non-fatal */
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `Injected ${student.fullName} into Game (#${badge})`,
+      });
     }
 
     throw new GameEngineError("VALIDATION", "Unknown action");

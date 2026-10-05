@@ -5,6 +5,7 @@ import { prismaWrite } from "@/lib/db/prisma";
 import { handleRoute, parseJsonBody } from "@/lib/api/respond";
 import { GameEngineError } from "@/lib/game/errors";
 import { publishEvent } from "@/lib/game/events/publisher";
+import { generateUniqueGameBadge } from "@/lib/game/badges";
 import { z } from "zod";
 import { randomInt } from "node:crypto";
 
@@ -39,28 +40,35 @@ export async function POST(request: Request) {
       throw new GameEngineError("NOT_FOUND", `Room ${formattedCode} does not exist. Check the TV screen for the active room code.`);
     }
 
-    // 4. Room must be accepting players
-    if (game.status !== "SETUP" && game.status !== "READY") {
-      // Check if player was already in this game (reconnect)
-      const existing = await prismaWrite.participant.findFirst({
-        where: {
-          gameId: game.id,
-          accountId: student.accountId,
-        },
-      });
+    // 4. Room must be active (or midgame joinable)
+    const isMidgame = game.status !== "SETUP" && game.status !== "READY";
+    if (game.status === "FINISHED") {
+      throw new GameEngineError("FORBIDDEN", `Room ${formattedCode} has ended.`);
+    }
 
-      if (existing) {
-        await createParticipantSession(existing.id);
-        return NextResponse.json({
-          success: true,
-          reconnected: true,
-          roomCode: game.roomCode,
-          playerNumber: existing.playerNumber,
-          gameId: game.id,
-        });
+    // Check if player was already in this game (reconnect)
+    const existing = await prismaWrite.participant.findFirst({
+      where: {
+        gameId: game.id,
+        accountId: student.accountId,
+      },
+    });
+
+    if (existing) {
+      let badge = existing.badge;
+      if (!badge) {
+        badge = await generateUniqueGameBadge(prismaWrite, game.id);
+        await prismaWrite.participant.update({ where: { id: existing.id }, data: { badge } });
       }
-
-      throw new GameEngineError("FORBIDDEN", `Room ${formattedCode} has already started. Spectate on the arena screen or wait for next match.`);
+      await createParticipantSession(existing.id);
+      return NextResponse.json({
+        success: true,
+        reconnected: true,
+        roomCode: game.roomCode,
+        badge,
+        playerNumber: existing.playerNumber,
+        gameId: game.id,
+      });
     }
 
     // 5. Check if already in the room
@@ -72,11 +80,17 @@ export async function POST(request: Request) {
     });
 
     if (alreadyJoined) {
+      let badge = alreadyJoined.badge;
+      if (!badge) {
+        badge = await generateUniqueGameBadge(prismaWrite, game.id);
+        await prismaWrite.participant.update({ where: { id: alreadyJoined.id }, data: { badge } });
+      }
       await createParticipantSession(alreadyJoined.id);
       return NextResponse.json({
         success: true,
         alreadyJoined: true,
         roomCode: game.roomCode,
+        badge,
         playerNumber: alreadyJoined.playerNumber,
         gameId: game.id,
       });
@@ -91,7 +105,8 @@ export async function POST(request: Request) {
       throw new GameEngineError("CONFLICT", `Room ${formattedCode} is full (${currentCount}/${game.maxPlayers}).`);
     }
 
-    // 7. Assign sequential player number in this game (#01, #02, #03...)
+    // 7. Generate non-sequential unpredictable badge (e.g. K7Q4)
+    const badge = await generateUniqueGameBadge(prismaWrite, game.id);
     const assignedNumber = currentCount + 1;
     const internalPin = `NS-${randomInt(100000, 999999)}`;
 
@@ -103,11 +118,30 @@ export async function POST(request: Request) {
         fullName: student.fullName,
         collegeRegId: student.collegeRegId,
         code: internalPin,
+        badge,
         playerNumber: assignedNumber,
         isApproved: true,
         status: "ALIVE",
+        role: isMidgame ? "ENGINEER" : null,
       },
     });
+
+    if (isMidgame) {
+      const activeTasks = await prismaWrite.task.findMany({
+        where: { gameId: game.id, status: "AVAILABLE" },
+      });
+      for (const t of activeTasks) {
+        await prismaWrite.participantTask.upsert({
+          where: { participantId_taskId: { participantId: participant.id, taskId: t.id } },
+          update: {},
+          create: {
+            participantId: participant.id,
+            taskId: t.id,
+            status: "AVAILABLE",
+          },
+        });
+      }
+    }
 
     // 8. Set participant session cookie for in-game APIs
     await createParticipantSession(participant.id);
@@ -129,6 +163,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       roomCode: game.roomCode,
+      badge,
       playerNumber: assignedNumber,
       gameId: game.id,
       name: student.fullName,
