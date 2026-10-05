@@ -10,12 +10,7 @@ interface ReactorCircuitTaskProps {
 const SUBSYSTEMS = [
   "R. ENGINE",
   "L. ENGINE",
-  "WEAPONS",
-  "SHIELDS",
-  "NAVIGATION",
-  "COMMS",
-  "O2",
-  "SECURITY",
+  "CORE FLOW",
 ];
 
 const DELTA = [-4, 1, 4, -1]; // 0=up, 1=right, 2=down, 3=left
@@ -25,9 +20,19 @@ interface Cell {
   rot: number;
 }
 
+// 4x4 Grid neighbors helper
+function getNeighbor(index: number, dir: number): number {
+  const row = Math.floor(index / 4);
+  const col = index % 4;
+  if (dir === 0) return row > 0 ? index - 4 : -1;
+  if (dir === 1) return col < 3 ? index + 1 : -1;
+  if (dir === 2) return row < 3 ? index + 4 : -1;
+  if (dir === 3) return col > 0 ? index - 1 : -1;
+  return -1;
+}
+
 export function ReactorCircuitTask({ onSuccess, onCancel }: ReactorCircuitTaskProps) {
   const [cells, setCells] = useState<Cell[]>([]);
-  const [currentNode, setCurrentNode] = useState(0);
   const [solvedNodes, setSolvedNodes] = useState(0);
   const [busy, setBusy] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -63,13 +68,6 @@ export function ReactorCircuitTask({ onSuccess, onCancel }: ReactorCircuitTaskPr
     });
   }, [playTone]);
 
-  const adjacent = (index: number, dir: number) => {
-    const next = index + DELTA[dir];
-    if (next < 0 || next >= 16) return -1;
-    if (dir % 2 === 1 && Math.floor(index / 4) !== Math.floor(next / 4)) return -1;
-    return next;
-  };
-
   const getPorts = (cell: Cell) => {
     return cell.base.map((dir) => (dir + cell.rot) % 4);
   };
@@ -82,7 +80,7 @@ export function ReactorCircuitTask({ onSuccess, onCancel }: ReactorCircuitTaskPr
     while (queue.length > 0) {
       const curr = queue.shift()!;
       for (const dir of getPorts(currentCells[curr])) {
-        const next = adjacent(curr, dir);
+        const next = getNeighbor(curr, dir);
         if (next < 0 || seen.has(next)) continue;
         if (getPorts(currentCells[next]).includes((dir + 2) % 4)) {
           seen.add(next);
@@ -93,30 +91,116 @@ export function ReactorCircuitTask({ onSuccess, onCancel }: ReactorCircuitTaskPr
     return seen;
   }, []);
 
+  // GUARANTEED SOLVABLE PUZZLE GENERATOR
+  // 1. Generate a self-avoiding path from 13 to 3 on 4x4 grid.
+  // 2. Set bases along the path so that rot=0 aligns ports along the path.
+  // 3. For off-path cells, give them valid conduits (straight or corner).
+  // 4. Randomly rotate tiles so player has to solve it, ensuring it doesn't start already solved.
   const generatePuzzle = useCallback(() => {
-    const newCells: Cell[] = Array.from({ length: 16 }, () => ({
-      base: Math.random() < 0.5 ? [0, 2] : [0, 1],
-      rot: 0,
-    }));
+    const START = 13;
+    const END = 3;
 
-    newCells[13].base = [0]; // Battery
-    newCells[3].base = [0, 1, 2, 3]; // Target
+    // Find a random self-avoiding path from START to END
+    let path: number[] = [];
+    let attempts = 0;
 
-    for (let i = 0; i < 16; i++) {
-      if (i !== 13 && i !== 3) {
-        newCells[i].rot = Math.floor(Math.random() * 4);
+    while (attempts < 200) {
+      attempts++;
+      const currentPath = [START];
+      const visited = new Set<number>([START]);
+      let curr = START;
+
+      while (curr !== END) {
+        // Collect unvisited neighbors
+        const validDirs: { dir: number; next: number }[] = [];
+        for (let d = 0; d < 4; d++) {
+          const n = getNeighbor(curr, d);
+          if (n >= 0 && !visited.has(n)) {
+            validDirs.push({ dir: d, next: n });
+          }
+        }
+
+        if (validDirs.length === 0) break; // Dead end, retry
+
+        // Bias towards END cell coordinates to find path quickly
+        const endRow = Math.floor(END / 4);
+        const endCol = END % 4;
+        validDirs.sort((a, b) => {
+          const distA = Math.abs(Math.floor(a.next / 4) - endRow) + Math.abs((a.next % 4) - endCol);
+          const distB = Math.abs(Math.floor(b.next / 4) - endRow) + Math.abs((b.next % 4) - endCol);
+          return distA - distB + (Math.random() - 0.5) * 1.5;
+        });
+
+        const chosen = validDirs[0];
+        currentPath.push(chosen.next);
+        visited.add(chosen.next);
+        curr = chosen.next;
+      }
+
+      if (curr === END && currentPath.length >= 4) {
+        path = currentPath;
+        break;
       }
     }
 
-    let attempts = 0;
-    while (calculateFlow(newCells).has(3) && attempts < 50) {
+    // Fallback known valid path if random walk timed out: 13 -> 9 -> 5 -> 6 -> 7 -> 3
+    if (path.length === 0) {
+      path = [13, 9, 5, 6, 7, 3];
+    }
+
+    const newCells: Cell[] = Array.from({ length: 16 }, () => ({
+      base: [0, 2], // default line
+      rot: 0,
+    }));
+
+    // Target and Battery have dedicated base connectors
+    newCells[13].base = [0]; // Points up into grid
+    newCells[3].base = [0, 1, 2, 3]; // Target accepts all
+
+    // Configure base conduit shapes along the path
+    for (let i = 1; i < path.length - 1; i++) {
+      const prev = path[i - 1];
+      const curr = path[i];
+      const next = path[i + 1];
+
+      // Find direction from curr to prev
+      let inDir = 0;
+      for (let d = 0; d < 4; d++) {
+        if (getNeighbor(curr, d) === prev) inDir = d;
+      }
+      // Find direction from curr to next
+      let outDir = 0;
+      for (let d = 0; d < 4; d++) {
+        if (getNeighbor(curr, d) === next) outDir = d;
+      }
+
+      // If inDir and outDir are opposite, it's a straight conduit
+      if ((inDir + 2) % 4 === outDir) {
+        newCells[curr].base = inDir % 2 === 0 ? [0, 2] : [1, 3];
+      } else {
+        // Corner conduit
+        newCells[curr].base = [inDir, outDir].sort((a, b) => a - b);
+      }
+    }
+
+    // Randomize non-path cells
+    const pathSet = new Set(path);
+    for (let i = 0; i < 16; i++) {
+      if (!pathSet.has(i)) {
+        newCells[i].base = Math.random() < 0.5 ? [0, 2] : [0, 1];
+      }
+    }
+
+    // Now scramble rotations (excluding battery and target)
+    let scrambleAttempts = 0;
+    do {
       for (let i = 0; i < 16; i++) {
         if (i !== 13 && i !== 3) {
           newCells[i].rot = Math.floor(Math.random() * 4);
         }
       }
-      attempts++;
-    }
+      scrambleAttempts++;
+    } while (calculateFlow(newCells).has(3) && scrambleAttempts < 50);
 
     setCells(newCells);
   }, [calculateFlow]);
@@ -141,11 +225,10 @@ export function ReactorCircuitTask({ onSuccess, onCancel }: ReactorCircuitTaskPr
         const nextSolved = solvedNodes + 1;
         setSolvedNodes(nextSolved);
 
-        if (nextSolved >= 8) {
+        if (nextSolved >= 3) {
           setFinished(true);
           onSuccess();
         } else {
-          setCurrentNode(nextSolved);
           generatePuzzle();
         }
         setBusy(false);
@@ -175,13 +258,13 @@ export function ReactorCircuitTask({ onSuccess, onCancel }: ReactorCircuitTaskPr
             {sound ? "🔊" : "🔇"}
           </button>
           <span className="text-xs px-2.5 py-1 rounded bg-[#1b293c] border border-[#29374a] text-[#60dce9] font-bold">
-            {solvedNodes} / 8 Nodes
+            {solvedNodes} / 3 Nodes
           </span>
         </div>
       </div>
 
       <p className="text-xs text-[#8798b0] leading-relaxed">
-        Rotate conduit tiles to connect power from the battery (<span className="text-yellow-400 font-bold">⚡</span>) to the reactor target (<span className="text-cyan-400 font-bold">◎</span>). Restore all 8 subsystems.
+        Rotate conduit tiles to connect power from the battery (<span className="text-yellow-400 font-bold">⚡</span>) to the reactor target (<span className="text-cyan-400 font-bold">◎</span>). Complete 3 circuits.
       </p>
 
       {/* Grid */}
@@ -244,13 +327,13 @@ export function ReactorCircuitTask({ onSuccess, onCancel }: ReactorCircuitTaskPr
       <div className="bg-[#0c1522] p-3 rounded-xl border border-[#29374a] space-y-2">
         <div className="flex items-center justify-between text-[11px]">
           <span className="text-[#8798b0]">CURRENT TARGET:</span>
-          <span className="text-[#60dce9] font-bold">{SUBSYSTEMS[currentNode] || "ALL RESTORED"}</span>
+          <span className="text-[#60dce9] font-bold">{SUBSYSTEMS[solvedNodes] || "ALL RESTORED"}</span>
         </div>
-        <div className="grid grid-cols-4 gap-1.5 pt-1">
+        <div className="grid grid-cols-3 gap-1.5 pt-1">
           {SUBSYSTEMS.map((name, i) => (
             <div
               key={name}
-              className={`text-[9px] text-center p-1 rounded border truncate ${
+              className={`text-[10px] text-center p-1.5 rounded border truncate ${
                 i < solvedNodes
                   ? "bg-emerald-950/70 border-emerald-500/50 text-emerald-300 font-bold"
                   : "bg-zinc-900 border-zinc-800 text-zinc-500"

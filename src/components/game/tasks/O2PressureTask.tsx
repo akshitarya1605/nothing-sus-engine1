@@ -7,15 +7,20 @@ interface O2PressureTaskProps {
   onCancel: () => void;
 }
 
-const MATRIX = [
-  [3, -1, 2],
-  [1, 3, -1],
-  [-2, 1, 3],
-  [2, 2, 1],
+// Clear, direct valve effects on 3 chambers:
+// Valve 1 primarily drives Chamber A (+5, +1, 0)
+// Valve 2 primarily drives Chamber B (+1, +5, +1)
+// Valve 3 primarily drives Chamber C (0, +1, +5)
+// Valve 4 drives master pressure boost (+2, +2, +2)
+const VALVE_EFFECTS = [
+  [5, 1, 0],
+  [1, 5, 1],
+  [0, 1, 5],
+  [2, 2, 2],
 ];
 
 export function O2PressureTask({ onSuccess, onCancel }: O2PressureTaskProps) {
-  const [values, setValues] = useState<number[]>([0, 0, 0, 0]);
+  const [values, setValues] = useState<number[]>([1, 1, 1, 1]);
   const [targets, setTargets] = useState<number[]>([30, 30, 30]);
   const [stage, setStage] = useState(0);
   const [purgeActive, setPurgeActive] = useState(false);
@@ -58,16 +63,17 @@ export function O2PressureTask({ onSuccess, onCancel }: O2PressureTaskProps) {
 
   const calculatePressure = useCallback((v: number[]) => {
     return [0, 1, 2].map((chamber) => {
-      return 30 + v.reduce((sum, val, valve) => sum + val * MATRIX[valve][chamber], 0);
+      return 20 + v.reduce((sum, val, valve) => sum + val * VALVE_EFFECTS[valve][chamber], 0);
     });
   }, []);
 
   const newStage = useCallback((currentStageIndex: number) => {
-    setValues([0, 0, 0, 0]);
-    const solution = Array.from({ length: 4 }, () => 2 + Math.floor(Math.random() * 5));
+    setValues([1, 1, 1, 1]);
+    // Guaranteed solvable target generated from an exact integer combination
+    const solution = Array.from({ length: 4 }, () => 1 + Math.floor(Math.random() * 4));
     const nextTargets = calculatePressure(solution);
     setTargets(nextTargets);
-    setStatusMsg(`Stage ${currentStageIndex + 1} / 3: Balance chambers within ±1 kPa`);
+    setStatusMsg(`STAGE ${currentStageIndex + 1} / 2: Adjust valves to match targets within ±2 kPa`);
   }, [calculatePressure]);
 
   useEffect(() => {
@@ -81,49 +87,51 @@ export function O2PressureTask({ onSuccess, onCancel }: O2PressureTaskProps) {
     playTone(300 + valveIdx * 80, 0.04);
     setValues((prev) => {
       const next = [...prev];
-      next[valveIdx] = Math.max(0, Math.min(9, next[valveIdx] + delta));
+      next[valveIdx] = Math.max(0, Math.min(8, next[valveIdx] + delta));
       return next;
     });
   };
 
-  const handleCommit = () => {
-    if (purgeActive) return;
-    const balanced = currentPressure.every((val, idx) => Math.abs(val - targets[idx]) <= 1);
-
-    if (!balanced) {
-      playTone(140, 0.2, "sawtooth");
-      setStatusMsg("Pressure mismatch! Use matrix to balance chambers within ±1 kPa.");
-      return;
-    }
-
-    chime();
-    const nextStage = stage + 1;
-    if (nextStage < 3) {
-      setStage(nextStage);
-      newStage(nextStage);
-    } else {
-      setPurgeActive(true);
-      const seq = Array.from({ length: 6 }, () => Math.floor(Math.random() * 4));
-      setPurgeSeq(seq);
-      setPurgeEntry(0);
-      playSequence(seq);
-    }
-  };
-
   const playSequence = async (seq: number[]) => {
     setWatching(true);
-    setStatusMsg("Observe 6 membrane purge pulses…");
+    setStatusMsg("Memorize the 4-step purge pulse sequence…");
 
     for (const pad of seq) {
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 350));
       setActivePad(pad);
-      playTone(330 + pad * 110, 0.35);
+      playTone(330 + pad * 110, 0.3);
       await new Promise((r) => setTimeout(r, 450));
       setActivePad(null);
     }
 
     setWatching(false);
-    setStatusMsg("Repeat the sequence: 0 / 6");
+    setStatusMsg("Repeat the sequence: 0 / 4");
+  };
+
+  const handleCommit = () => {
+    if (purgeActive) return;
+    // Friendly ±2 kPa tolerance
+    const balanced = currentPressure.every((val, idx) => Math.abs(val - targets[idx]) <= 2);
+
+    if (!balanced) {
+      playTone(140, 0.2, "sawtooth");
+      setStatusMsg("Pressure mismatch! Adjust valves to match all 3 chamber targets.");
+      return;
+    }
+
+    chime();
+    const nextStage = stage + 1;
+    if (nextStage < 2) {
+      setStage(nextStage);
+      newStage(nextStage);
+    } else {
+      setPurgeActive(true);
+      // Clean 4-step sequence
+      const seq = Array.from({ length: 4 }, () => Math.floor(Math.random() * 4));
+      setPurgeSeq(seq);
+      setPurgeEntry(0);
+      void playSequence(seq);
+    }
   };
 
   const handlePadClick = (padIdx: number) => {
@@ -132,18 +140,18 @@ export function O2PressureTask({ onSuccess, onCancel }: O2PressureTaskProps) {
 
     if (purgeSeq[purgeEntry] !== padIdx) {
       setPurgeEntry(0);
-      setStatusMsg("Sequence mismatch! Replay or retry.");
+      setStatusMsg("Incorrect pulse! Tap 'Replay Sequence' to view again.");
       playTone(130, 0.25, "sawtooth");
       return;
     }
 
     const nextEntry = purgeEntry + 1;
     setPurgeEntry(nextEntry);
-    setStatusMsg(`Sequence accepted: ${nextEntry} / 6`);
+    setStatusMsg(`Sequence accepted: ${nextEntry} / 4`);
 
-    if (nextEntry === 6) {
+    if (nextEntry === 4) {
       chime();
-      setStatusMsg("O2 filtration system successfully restored!");
+      setStatusMsg("O2 filtration successfully equalized and purged!");
       setTimeout(() => onSuccess(), 600);
     }
   };
@@ -168,45 +176,51 @@ export function O2PressureTask({ onSuccess, onCancel }: O2PressureTaskProps) {
             {sound ? "🔊" : "🔇"}
           </button>
           <span className="text-xs px-2.5 py-1 rounded bg-[#1b293c] border border-[#29374a] text-[#6fe5ba] font-bold">
-            {purgeActive ? "MEMBRANE PURGE" : `STAGE ${stage + 1} / 3`}
+            {purgeActive ? "MEMBRANE PURGE" : `STAGE ${stage + 1} / 2`}
           </span>
         </div>
       </div>
 
       <div className="text-xs text-[#8798b0] leading-relaxed">
         {purgeActive
-          ? "Repeat the 6-step valve sequence to authorize membrane purge and complete O2 restoration."
-          : "Four valves feed three chambers. Match every target pressure within ±1 kPa, then commit."}
+          ? "Repeat the 4-step valve sequence to authorize membrane purge and complete O2 restoration."
+          : "Adjust the valves to match the target pressure in Chambers A, B, and C within ±2 kPa, then commit."}
       </div>
 
       {!purgeActive ? (
         <div className="space-y-4">
           {/* Valves */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {values.map((val, idx) => (
-              <div key={idx} className="bg-[#070e18] border border-[#29374a] rounded-xl p-3 text-center space-y-2">
-                <span className="text-[10px] uppercase text-[#6fe5ba] block font-bold">VALVE {idx + 1}</span>
-                <div className="text-xl font-black text-white">{val}</div>
-                <div className="flex justify-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleAdjust(idx, -1)}
-                    disabled={val <= 0}
-                    className="w-7 h-7 rounded bg-[#1b293c] hover:bg-[#293d53] disabled:opacity-30 border border-[#29374a] text-sm font-bold flex items-center justify-center text-white"
-                  >
-                    −
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleAdjust(idx, 1)}
-                    disabled={val >= 9}
-                    className="w-7 h-7 rounded bg-[#1b293c] hover:bg-[#293d53] disabled:opacity-30 border border-[#29374a] text-sm font-bold flex items-center justify-center text-white"
-                  >
-                    +
-                  </button>
+            {values.map((val, idx) => {
+              const labels = ["CH-A", "CH-B", "CH-C", "BOOST"];
+              return (
+                <div key={idx} className="bg-[#070e18] border border-[#29374a] rounded-xl p-3 text-center space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="uppercase text-[#6fe5ba] font-bold">V{idx + 1}</span>
+                    <span className="text-zinc-500 font-mono text-[9px]">{labels[idx]}</span>
+                  </div>
+                  <div className="text-2xl font-black text-white">{val}</div>
+                  <div className="flex justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleAdjust(idx, -1)}
+                      disabled={val <= 0}
+                      className="w-8 h-8 rounded-lg bg-[#1b293c] hover:bg-[#293d53] disabled:opacity-30 border border-[#29374a] text-base font-bold flex items-center justify-center text-white active:scale-95 transition-all"
+                    >
+                      −
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAdjust(idx, 1)}
+                      disabled={val >= 8}
+                      className="w-8 h-8 rounded-lg bg-[#1b293c] hover:bg-[#293d53] disabled:opacity-30 border border-[#29374a] text-base font-bold flex items-center justify-center text-white active:scale-95 transition-all"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Telemetry Table */}
@@ -214,15 +228,18 @@ export function O2PressureTask({ onSuccess, onCancel }: O2PressureTaskProps) {
             <div className="text-[10px] uppercase text-[#8798b0] font-bold">Chamber Telemetry</div>
             <div className="grid grid-cols-3 gap-2 text-center">
               {["CHAMBER A", "CHAMBER B", "CHAMBER C"].map((name, i) => {
-                const diff = Math.abs(currentPressure[i] - targets[i]);
-                const ok = diff <= 1;
+                const diff = currentPressure[i] - targets[i];
+                const ok = Math.abs(diff) <= 2;
                 return (
-                  <div key={name} className={`p-2 rounded-lg border ${ok ? "border-emerald-500/50 bg-emerald-950/30" : "border-zinc-800 bg-zinc-950"}`}>
-                    <div className="text-[9px] text-[#8798b0]">{name}</div>
+                  <div key={name} className={`p-2.5 rounded-lg border ${ok ? "border-emerald-500/50 bg-emerald-950/30" : "border-zinc-800 bg-zinc-950"}`}>
+                    <div className="text-[10px] text-[#8798b0] font-bold">{name}</div>
                     <div className={`text-base font-black ${ok ? "text-[#6fe5ba]" : "text-amber-400"}`}>
                       {currentPressure[i]} kPa
                     </div>
-                    <div className="text-[9px] text-zinc-500 mt-0.5">Target: {targets[i]} kPa</div>
+                    <div className="text-[9px] text-zinc-400 mt-0.5">Target: {targets[i]} kPa</div>
+                    <div className={`text-[9px] font-bold mt-0.5 ${ok ? "text-emerald-400" : "text-zinc-500"}`}>
+                      {ok ? "✓ BALANCED" : diff > 0 ? `▲ +${diff}` : `▼ ${diff}`}
+                    </div>
                   </div>
                 );
               })}
@@ -232,7 +249,7 @@ export function O2PressureTask({ onSuccess, onCancel }: O2PressureTaskProps) {
           <button
             type="button"
             onClick={handleCommit}
-            className="w-full py-3 rounded-xl bg-[#6fe5ba] hover:brightness-110 text-[#08111b] font-bold text-xs uppercase tracking-wider transition-all"
+            className="w-full py-3 rounded-xl bg-[#6fe5ba] hover:brightness-110 text-[#08111b] font-bold text-xs uppercase tracking-wider transition-all shadow-lg active:scale-98"
           >
             Commit Pressure Balance →
           </button>
@@ -251,7 +268,7 @@ export function O2PressureTask({ onSuccess, onCancel }: O2PressureTaskProps) {
                 className={`py-6 rounded-xl border font-bold text-sm transition-all ${
                   activePad === pad
                     ? "bg-[#6fe5ba] border-[#6fe5ba] text-black shadow-[0_0_20px_#6fe5ba]"
-                    : "bg-[#1b293c] border-[#29374a] text-white hover:border-[#6fe5ba]"
+                    : "bg-[#1b293c] border-[#29374a] text-white hover:border-[#6fe5ba] active:scale-95"
                 }`}
               >
                 V{pad + 1}
@@ -260,9 +277,9 @@ export function O2PressureTask({ onSuccess, onCancel }: O2PressureTaskProps) {
           </div>
           <button
             type="button"
-            onClick={() => playSequence(purgeSeq)}
+            onClick={() => void playSequence(purgeSeq)}
             disabled={watching}
-            className="w-full py-2 rounded-lg bg-[#1b293c] hover:bg-[#293d53] text-zinc-300 border border-[#29374a] text-xs transition-colors"
+            className="w-full py-2.5 rounded-lg bg-[#1b293c] hover:bg-[#293d53] text-zinc-300 border border-[#29374a] text-xs transition-colors"
           >
             Replay Sequence
           </button>
