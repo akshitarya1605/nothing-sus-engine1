@@ -45,7 +45,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ sec
     },
   });
 
-  const response = NextResponse.redirect(new URL("/control", _request.url));
+  const response = NextResponse.redirect(new URL("/admin", _request.url));
   response.cookies.set("ns_admin", raw, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
