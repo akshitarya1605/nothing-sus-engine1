@@ -1695,7 +1695,7 @@ export default function AdminLandingPage() {
         num: i + 1,
         name: user.fullName,
         role: "CREW" as Role, // default to crew in demo mode
-        status: user.activeParticipation ? user.activeParticipation.status : "ALIVE",
+        status: (user.activeParticipation ? user.activeParticipation.status : "ALIVE") as Status,
         discipline: DISCIPLINE_KEYS[i % DISCIPLINE_KEYS.length],
         color: CREW_COLORS[i % CREW_COLORS.length],
         points: 80 + ((i * 137) % 340),
