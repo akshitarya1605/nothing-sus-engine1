@@ -196,7 +196,7 @@ function LiveScreen({ state }: { state: ProjectorState }) {
                     <div
                       key={p.id}
                       className={cn(
-                        "flex items-center gap-1.5 rounded-full border-2 px-3 py-1 font-mono text-base font-bold transition-all",
+                        "flex items-center gap-1.5 rounded-full border-2 px-3 py-1 font-sans text-base font-bold transition-all",
                         dead
                           ? "border-red/60 bg-red/20 text-red line-through opacity-60"
                           : "border-cyan/60 bg-cyan/20 text-cyan",

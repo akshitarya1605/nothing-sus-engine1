@@ -596,7 +596,7 @@ function Navbar({
             </span>
             {mode === "demo" ? (
               <Link
-                href="/auth"
+                href="/"
                 className={cn(
                   "hidden items-center gap-1.5 rounded-full bg-[#FF3B5C] px-4 py-2 text-[13px] font-bold text-black transition-all duration-300 hover:bg-white sm:inline-flex shadow-[0_0_15px_rgba(255,59,92,0.5)]",
                   FOCUS_RING,
@@ -989,6 +989,11 @@ function RosterPanel({
         </div>
 
         <ul className="mt-5 grid max-h-[460px] grid-cols-2 gap-2.5 overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,0.12)_transparent] [scrollbar-width:thin] sm:grid-cols-3 xl:grid-cols-4">
+          {players.length === 0 && (
+            <div className="col-span-full py-12 text-center text-sm font-bold uppercase tracking-widest text-zinc-500">
+              No players have signed up yet.
+            </div>
+          )}
           {visible.map((p) => {
             const isImp = reveal && p.role === "IMPOSTOR";
             const isSel = p.id === selectedId;
@@ -1638,7 +1643,7 @@ const PROTOCOL: Array<{ icon: LucideIcon; title: string; body: string; meta: str
 
 export default function AdminLandingPage() {
   const [live, setLive] = useState<LiveState | null>(null);
-  const [demoPlayers, setDemoPlayers] = useState<Player[]>(DEMO_PLAYERS);
+  const [demoPlayers, setDemoPlayers] = useState<Player[]>([]);
   const [section, setSection] = useState<SectionId>("overview");
   const [tab, setTab] = useState<ConsoleTab>("roster");
   const [sabotageId, setSabotageId] = useState<string | null>(null);

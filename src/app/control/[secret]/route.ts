@@ -21,7 +21,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ sec
   }
 
   let game = await prisma.game.findUnique({ where: { adminSecret: secret } });
-  if (!game && (secret === "ARSH235" || secret === process.env.ADMIN_SECRET)) {
+  if (!game && (secret === "NOTHINGSUS123" || secret === process.env.ADMIN_SECRET)) {
     game = await prisma.game.create({
       data: {
         id: secret,
