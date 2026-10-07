@@ -111,13 +111,13 @@ export default function SpectatorRoomPage({
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(185,28,28,0.15),transparent_70%)] pointer-events-none" />
 
       {/* Top Banner */}
-      <header className="relative z-10 flex items-center justify-between border-b border-zinc-800 pb-6">
+      <header className="relative z-10 flex items-center justify-between border-b border-white/[0.08] pb-6">
         <div className="flex items-center gap-4">
-          <div className="h-10 w-10 rounded-lg bg-red-600 flex items-center justify-center font-black text-lg text-white shadow-lg shadow-red-900/40">
+          <div className="h-10 w-10 rounded-lg bg-[#FF3B5C] flex items-center justify-center font-black text-lg text-[#0B0B0F] shadow-[0_0_15px_rgba(255,59,92,0.4)]">
             ISA
           </div>
           <div>
-            <div className="text-[11px] font-mono tracking-widest uppercase text-red-400 font-bold">
+            <div className="text-[11px] font-mono tracking-widest uppercase text-[#FF3B5C] font-bold">
               INTERNATIONAL SOCIETY OF AUTOMATION — MANIPAL UNIVERSITY JAIPUR
             </div>
             <h1 className="text-2xl font-black tracking-tight text-zinc-100 uppercase">
@@ -127,8 +127,8 @@ export default function SpectatorRoomPage({
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="px-4 py-1.5 rounded-full bg-zinc-900 border border-zinc-700 text-xs font-mono">
-            ROOM: <span className="text-red-400 font-bold">{roomCode}</span>
+          <div className="px-4 py-1.5 rounded-full bg-black/50 border border-white/[0.08] text-xs font-mono">
+            ROOM: <span className="text-[#FF3B5C] font-bold">{roomCode}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -153,32 +153,32 @@ export default function SpectatorRoomPage({
             >
               <div className="space-y-6">
                 <div>
-                  <span className="text-xs font-mono tracking-widest uppercase text-red-400 bg-red-950/60 border border-red-500/30 px-3 py-1 rounded">
+                  <span className="text-xs font-mono tracking-widest uppercase text-[#FF3B5C] bg-[#FF3B5C]/10/60 border border-[#FF3B5C]/30 px-3 py-1 rounded">
                     JOIN ON YOUR MOBILE DEVICE
                   </span>
                   <h2 className="text-5xl sm:text-6xl font-black tracking-tighter text-white mt-4">
                     ROOM CODE
                   </h2>
-                  <div className="font-mono text-6xl sm:text-7xl font-black text-red-500 tracking-widest mt-2 drop-shadow-[0_0_35px_rgba(239,68,68,0.5)]">
+                  <div className="font-mono text-6xl sm:text-7xl font-black text-[#FF3B5C] tracking-widest mt-2 drop-shadow-[0_0_35px_rgba(239,68,68,0.5)]">
                     {roomCode}
                   </div>
                 </div>
 
-                <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950/80 space-y-2">
+                <div className="p-4 rounded-xl border border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px]/80 space-y-2">
                   <div className="text-xs font-mono text-zinc-400">1. Go to <span className="text-white font-bold">{typeof window !== "undefined" ? window.location.host : "nothing-sus-engine.vercel.app"}/join</span></div>
                   <div className="text-xs font-mono text-zinc-400">2. Log in with your <span className="text-white font-bold">College Reg ID</span></div>
-                  <div className="text-xs font-mono text-zinc-400">3. Enter Room Code: <span className="text-red-400 font-bold">{roomCode}</span></div>
+                  <div className="text-xs font-mono text-zinc-400">3. Enter Room Code: <span className="text-[#FF3B5C] font-bold">{roomCode}</span></div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-mono text-zinc-400">Connected Players:</span>
-                  <span className="px-3 py-1 rounded-lg bg-red-950/80 border border-red-500/40 text-red-300 font-mono font-bold text-sm">
+                  <span className="px-3 py-1 rounded-lg bg-[#FF3B5C]/10 border border-[#FF3B5C]/30 text-red-300 font-mono font-bold text-sm">
                     {state?.playerRoster?.length || 0} / {state?.maxPlayers || 30} Players Ready
                   </span>
                 </div>
               </div>
 
-              <div className="flex flex-col items-center justify-center p-8 rounded-3xl border border-zinc-800 bg-zinc-950/90 shadow-2xl">
+              <div className="flex flex-col items-center justify-center p-8 rounded-3xl border border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px]/90 shadow-2xl">
                 <div className="p-4 bg-white rounded-2xl shadow-xl">
                   <QRCode value={joinUrl} size={240} />
                 </div>
@@ -196,7 +196,7 @@ export default function SpectatorRoomPage({
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.1 }}
-              className="text-center space-y-6 max-w-2xl p-10 rounded-3xl border-2 border-red-500/40 bg-zinc-950/95 shadow-2xl shadow-red-950/80"
+              className="text-center space-y-6 max-w-2xl p-10 rounded-3xl border-2 border-[#FF3B5C]/30 bg-[#12121A]/60 backdrop-blur-[30px]/95 shadow-2xl shadow-red-950/80"
             >
               <span className="text-xs font-mono uppercase tracking-widest text-zinc-400">
                 EJECTION TRANSMISSION
@@ -206,7 +206,7 @@ export default function SpectatorRoomPage({
               </h2>
               <div
                 className={`text-3xl font-black font-mono tracking-wider ${
-                  state.eliminationReveal.role === "IMPOSTER" ? "text-red-500" : "text-cyan-400"
+                  state.eliminationReveal.role === "IMPOSTER" ? "text-[#FF3B5C]" : "text-[#00F0FF]"
                 }`}
               >
                 {state.eliminationReveal.role === "IMPOSTER"
@@ -225,8 +225,8 @@ export default function SpectatorRoomPage({
               exit={{ opacity: 0, y: -20 }}
               className="text-center space-y-6 max-w-4xl w-full"
             >
-              <div className="inline-block p-3 rounded-full bg-red-950/80 border-2 border-red-500 animate-pulse shadow-[0_0_50px_rgba(239,68,68,0.5)]">
-                <span className="text-xs font-mono font-black uppercase tracking-widest text-red-400">
+              <div className="inline-block p-3 rounded-full bg-[#FF3B5C]/10 border-2 border-red-500 animate-pulse shadow-[0_0_50px_rgba(239,68,68,0.5)]">
+                <span className="text-xs font-mono font-black uppercase tracking-widest text-[#FF3B5C]">
                   CRITICAL EMERGENCY MEETING
                 </span>
               </div>
@@ -243,15 +243,15 @@ export default function SpectatorRoomPage({
                   <span className="font-mono text-2xl sm:text-3xl font-black text-yellow-400 bg-yellow-950/60 border border-yellow-500/40 px-4 py-1 rounded-xl">
                     ⏱ {state?.meetingState?.secondsRemaining ?? 0}s REMAINING
                   </span>
-                  <span className="text-xs font-mono text-zinc-400 uppercase tracking-widest bg-zinc-900 border border-zinc-800 px-3 py-2 rounded-xl">
+                  <span className="text-xs font-mono text-zinc-400 uppercase tracking-widest bg-black/50 border border-white/[0.08] px-3 py-2 rounded-xl">
                     {state?.meetingState?.phase === "DISCUSSION" ? "30s Discussion Period" : "60s Live Ballot"}
                   </span>
                 </div>
               </div>
 
               {/* LIVE VOTES MATRIX (sabke votes visible honge) */}
-              <div className="p-6 rounded-3xl border border-zinc-800 bg-zinc-950/90 shadow-2xl space-y-4 text-left">
-                <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <div className="p-6 rounded-3xl border border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px]/90 shadow-2xl space-y-4 text-left">
+                <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
                   <span className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-300">
                     PUBLIC BALLOT MATRIX ({state?.meetingState?.votes?.length || 0} Votes Cast)
                   </span>
@@ -271,7 +271,7 @@ export default function SpectatorRoomPage({
                     {state.meetingState.votes.map((v) => (
                       <div
                         key={v.id}
-                        className="p-2.5 rounded-xl border border-zinc-800 bg-zinc-900/80 font-mono text-xs flex items-center justify-between"
+                        className="p-2.5 rounded-xl border border-white/[0.08] bg-black/50/80 font-mono text-xs flex items-center justify-between"
                       >
                         <span className="text-zinc-200 font-bold truncate">
                           {v.voterBadge ? `#${v.voterBadge}` : ""} {v.voterName}
@@ -280,8 +280,8 @@ export default function SpectatorRoomPage({
                         <span
                           className={`font-bold px-2 py-0.5 rounded text-[11px] ${
                             v.isSkip
-                              ? "bg-zinc-800 text-zinc-400 border border-zinc-700"
-                              : "bg-red-950/90 text-red-300 border border-red-500/40"
+                              ? "bg-white/[0.04] text-zinc-400 border border-white/[0.08]"
+                              : "bg-[#FF3B5C]/10/90 text-red-300 border border-[#FF3B5C]/30"
                           }`}
                         >
                           {v.isSkip ? "SKIPPED" : `${v.targetBadge ? `#${v.targetBadge}` : ""} ${v.targetName}`}
@@ -304,7 +304,7 @@ export default function SpectatorRoomPage({
               className="w-full max-w-5xl space-y-10"
             >
               {/* Global Task Progress Bar */}
-              <div className="p-8 rounded-3xl border border-zinc-800 bg-zinc-950/80 space-y-4 shadow-xl">
+              <div className="p-8 rounded-3xl border border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px]/80 space-y-4 shadow-xl">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-mono uppercase tracking-wider text-zinc-400">
                     Total Campus Tasks Completed
@@ -313,7 +313,7 @@ export default function SpectatorRoomPage({
                     {state?.globalProgress?.percentage || 0}%
                   </span>
                 </div>
-                <div className="w-full bg-zinc-900 h-6 rounded-full overflow-hidden p-1 border border-zinc-800">
+                <div className="w-full bg-black/50 h-6 rounded-full overflow-hidden p-1 border border-white/[0.08]">
                   <div
                     className="bg-gradient-to-r from-emerald-600 to-emerald-400 h-full rounded-full transition-all duration-700 shadow-[0_0_15px_rgba(16,185,129,0.5)]"
                     style={{ width: `${state?.globalProgress?.percentage || 0}%` }}
@@ -332,8 +332,8 @@ export default function SpectatorRoomPage({
                     key={p.id}
                     className={`p-3 rounded-xl border text-center font-mono text-xs transition-all ${
                       p.status === "ELIMINATED"
-                        ? "bg-zinc-950 border-zinc-900 text-zinc-600 line-through opacity-40"
-                        : "bg-zinc-900/80 border-zinc-800 text-zinc-200"
+                        ? "bg-[#12121A]/60 backdrop-blur-[30px] border-zinc-900 text-zinc-600 line-through opacity-40"
+                        : "bg-black/50/80 border-white/[0.08] text-zinc-200"
                     }`}
                   >
                     <div className="text-[10px] text-zinc-400 font-bold">
@@ -374,7 +374,7 @@ export default function SpectatorRoomPage({
                 {state.finalResult.reason}
               </p>
 
-              <div className="inline-block px-4 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-400 uppercase tracking-widest">
+              <div className="inline-block px-4 py-1.5 rounded-full bg-black/50 border border-white/[0.08] text-xs font-mono text-zinc-400 uppercase tracking-widest">
                 Victorious Faction: {state.finalResult.winner}
               </div>
             </motion.div>
@@ -383,7 +383,7 @@ export default function SpectatorRoomPage({
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-zinc-800/80 pt-4 flex items-center justify-between text-xs font-mono text-zinc-500">
+      <footer className="relative z-10 border-t border-white/[0.08]/80 pt-4 flex items-center justify-between text-xs font-mono text-zinc-500">
         <div>Manipal University Jaipur — Student Chapter</div>
         <div>@isa_muj_chapter</div>
       </footer>

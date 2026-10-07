@@ -91,9 +91,9 @@ function JoinContent() {
 
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-12 relative overflow-hidden">
         <div className="w-full max-w-md relative z-10">
-          <div className="rounded-2xl border border-red-500/30 bg-zinc-950 p-6 sm:p-8 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <span className="text-[10px] font-mono tracking-widest uppercase text-red-400">
+          <div className="rounded-[2.5rem] border border-[#FF3B5C]/30 bg-[#12121A]/60 backdrop-blur-[30px] p-6 sm:p-8 space-y-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <span className="text-[10px] font-mono tracking-widest uppercase text-[#FF3B5C]">
                 ROOM ENTRY
               </span>
               <span className="text-xs font-mono text-zinc-400">
@@ -111,7 +111,7 @@ function JoinContent() {
             </div>
 
             {error && (
-              <div className="p-3 rounded-lg border border-red-500/30 bg-red-950/40 text-red-200 text-xs font-mono">
+              <div className="p-3 rounded-lg border border-[#FF3B5C]/30 bg-[#FF3B5C]/5 text-red-200 text-xs font-mono">
                 {error}
               </div>
             )}
@@ -125,14 +125,14 @@ function JoinContent() {
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                   placeholder="SUS-XXXX"
-                  className="w-full px-4 py-4 rounded-xl bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 font-mono text-center text-2xl font-black tracking-widest uppercase focus:outline-none focus:border-red-500"
+                  className="w-full px-4 py-4 rounded-xl bg-black/50 border border-white/[0.08] text-white placeholder-zinc-500 font-mono text-center text-2xl font-black tracking-widest uppercase focus:outline-none focus:border-red-500"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 px-4 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/50 flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-4 rounded-xl bg-[#FF3B5C] hover:bg-white text-[#0B0B0F] disabled:opacity-50 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/50 flex items-center justify-center gap-2"
               >
                 {loading ? "Joining Game..." : "Join Game"}
               </button>

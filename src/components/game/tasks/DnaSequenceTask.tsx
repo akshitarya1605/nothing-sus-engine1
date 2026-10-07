@@ -16,7 +16,7 @@ const PAIRS: Record<Base, Base> = {
 };
 
 const BASE_COLORS: Record<Base, string> = {
-  A: "bg-red-500/20 text-red-400 border-red-500",
+  A: "bg-red-500/20 text-[#FF3B5C] border-red-500",
   T: "bg-blue-500/20 text-blue-400 border-blue-500",
   C: "bg-emerald-500/20 text-emerald-400 border-emerald-500",
   G: "bg-yellow-500/20 text-yellow-400 border-yellow-500",
@@ -91,7 +91,7 @@ export function DnaSequenceTask({ onSuccess, onCancel }: DnaSequenceTaskProps) {
   };
 
   return (
-    <div className="bg-[#080d16] text-[#e7eef8] rounded-2xl border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
+    <div className="bg-[#080d16] text-[#e7eef8] rounded-[2.5rem] border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#29374a] pb-3">
         <div>
@@ -121,8 +121,8 @@ export function DnaSequenceTask({ onSuccess, onCancel }: DnaSequenceTaskProps) {
       </p>
 
       {/* DNA Double Helix Columns */}
-      <div className={`bg-[#070e18] p-4 rounded-2xl border transition-colors ${errorFlash ? "border-red-500 bg-red-950/20" : "border-[#29374a]"} space-y-3`}>
-        <div className="flex justify-between items-center text-[10px] text-zinc-400 font-bold border-b border-zinc-800 pb-2">
+      <div className={`bg-[#070e18] p-4 rounded-[2.5rem] border transition-colors ${errorFlash ? "border-red-500 bg-[#FF3B5C]/10/20" : "border-[#29374a]"} space-y-3`}>
+        <div className="flex justify-between items-center text-[10px] text-zinc-400 font-bold border-b border-white/[0.08] pb-2">
           <span>ORIGINAL STRAND</span>
           <span>COMPLEMENTARY STRAND</span>
         </div>
@@ -139,8 +139,8 @@ export function DnaSequenceTask({ onSuccess, onCancel }: DnaSequenceTaskProps) {
                   isCurrent
                     ? "border-emerald-400 bg-emerald-950/30"
                     : isMatched
-                    ? "border-zinc-800 bg-zinc-950 opacity-60"
-                    : "border-zinc-850 bg-zinc-950"
+                    ? "border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px] opacity-60"
+                    : "border-zinc-850 bg-[#12121A]/60 backdrop-blur-[30px]"
                 }`}
               >
                 {/* Left Template Base */}
@@ -167,7 +167,7 @@ export function DnaSequenceTask({ onSuccess, onCancel }: DnaSequenceTaskProps) {
                       ?
                     </div>
                   ) : (
-                    <div className="w-8 h-8 rounded-lg border border-zinc-800 bg-zinc-900" />
+                    <div className="w-8 h-8 rounded-lg border border-white/[0.08] bg-black/50" />
                   )}
                 </div>
               </div>
@@ -199,7 +199,7 @@ export function DnaSequenceTask({ onSuccess, onCancel }: DnaSequenceTaskProps) {
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-700 transition-colors"
+          className="text-xs px-4 py-2 rounded-lg bg-black/50 hover:bg-white/[0.04] text-zinc-400 border border-white/[0.08] transition-colors"
         >
           Exit Console
         </button>

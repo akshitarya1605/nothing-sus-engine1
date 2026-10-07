@@ -4,12 +4,11 @@ import { handleRoute } from "@/lib/api/respond";
 import { prismaWrite } from "@/lib/db/prisma";
 import { GameEngineError } from "@/lib/game/errors";
 import { randomInt } from "node:crypto";
-import { ActorType, GameStatus, ParticipantRole, ParticipantStatus, ParticipantTaskStatus, RoundPhase, RoundStatus, TaskDifficulty, TaskStatus } from "@prisma/client";
+import { ActorType, GameStatus, ParticipantRole, ParticipantStatus, ParticipantTaskStatus, RoundPhase, RoundStatus, } from "@prisma/client";
 import { writeAuditLog } from "@/lib/game/audit";
 import { publishEvent } from "@/lib/game/events/publisher";
 import { generateUniqueGameBadge } from "@/lib/game/badges";
-import { hashOtp } from "@/lib/game/otp";
-import { ALL_TASKS, getParticipantProfession, getTasksForProfession } from "@/lib/game/professions";
+
 
 export const dynamic = "force-dynamic";
 
@@ -97,44 +96,30 @@ export async function POST() {
         },
       });
 
-      // 7b. Seed all 15 mini-game tasks and assign each participant their 6 tasks (3 common + 3 profession-specific)
-      const taskMap = new Map<string, string>(); // title -> taskId
-
-      for (const tDef of ALL_TASKS) {
-        let task = await tx.task.findFirst({
-          where: { gameId, title: tDef.title },
-        });
-        if (!task) {
-          task = await tx.task.create({
-            data: {
-              gameId,
-              roundId: round1.id,
-              title: tDef.title,
-              description: tDef.description,
-              points: tDef.points,
-              estimatedMinutes: 5,
-              difficulty: tDef.difficulty,
-              status: TaskStatus.AVAILABLE,
-              otpHash: hashOtp(tDef.otp),
-            },
-          });
-        }
-        taskMap.set(tDef.title, task.id);
-      }
-
+      // 7b. Fetch all existing Tasks for this game (created by admin)
+      const allGameTasks = await tx.task.findMany({
+        where: { gameId },
+      });
+      
+      // If there are no tasks, that's fine, we just don't assign any.
+      // But typically admin should create tasks.
+      
       for (const p of participants) {
-        const profession = getParticipantProfession(p.playerNumber, p.id);
-        const assignedTaskDefs = getTasksForProfession(profession);
-
-        for (const tDef of assignedTaskDefs) {
-          const taskId = taskMap.get(tDef.title);
-          if (!taskId) continue;
+        const isImposter = imposterIds.has(p.id);
+        // Filter tasks based on role
+        const eligibleTasks = allGameTasks.filter(t => t.forImposter === isImposter);
+        
+        // Randomly select 10 tasks (or fewer if total is less than 10)
+        const shuffledTasks = [...eligibleTasks].sort(() => 0.5 - Math.random());
+        const assignedTasks = shuffledTasks.slice(0, 10);
+        
+        for (const task of assignedTasks) {
           await tx.participantTask.upsert({
-            where: { participantId_taskId: { participantId: p.id, taskId } },
+            where: { participantId_taskId: { participantId: p.id, taskId: task.id } },
             update: {},
             create: {
               participantId: p.id,
-              taskId,
+              taskId: task.id,
               status: ParticipantTaskStatus.AVAILABLE,
             },
           });

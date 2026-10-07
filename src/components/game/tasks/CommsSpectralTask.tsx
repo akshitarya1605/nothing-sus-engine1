@@ -183,7 +183,7 @@ export function CommsSpectralTask({ onSuccess, onCancel }: CommsSpectralTaskProp
   }, [carrier, finished, freq, amp, phase, target, chime, newCarrier, onSuccess]);
 
   return (
-    <div className="bg-[#080d16] text-[#e7eef8] rounded-2xl border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full">
+    <div className="bg-[#080d16] text-[#e7eef8] rounded-[2.5rem] border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#29374a] pb-3">
         <div>
@@ -254,7 +254,7 @@ export function CommsSpectralTask({ onSuccess, onCancel }: CommsSpectralTaskProp
               setFreq(parseFloat(e.target.value));
               playTone(260, 0.03);
             }}
-            className="w-full accent-[#f3bb68] h-2 bg-zinc-800 rounded-lg cursor-pointer"
+            className="w-full accent-[#f3bb68] h-2 bg-white/[0.04] rounded-lg cursor-pointer"
           />
         </div>
 
@@ -273,7 +273,7 @@ export function CommsSpectralTask({ onSuccess, onCancel }: CommsSpectralTaskProp
               setAmp(parseFloat(e.target.value));
               playTone(370, 0.03);
             }}
-            className="w-full accent-[#f3bb68] h-2 bg-zinc-800 rounded-lg cursor-pointer"
+            className="w-full accent-[#f3bb68] h-2 bg-white/[0.04] rounded-lg cursor-pointer"
           />
         </div>
 
@@ -292,7 +292,7 @@ export function CommsSpectralTask({ onSuccess, onCancel }: CommsSpectralTaskProp
               setPhase(parseInt(e.target.value));
               playTone(480, 0.03);
             }}
-            className="w-full accent-[#f3bb68] h-2 bg-zinc-800 rounded-lg cursor-pointer"
+            className="w-full accent-[#f3bb68] h-2 bg-white/[0.04] rounded-lg cursor-pointer"
           />
         </div>
       </div>
@@ -303,7 +303,7 @@ export function CommsSpectralTask({ onSuccess, onCancel }: CommsSpectralTaskProp
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-700 transition-colors"
+          className="text-xs px-4 py-2 rounded-lg bg-black/50 hover:bg-white/[0.04] text-zinc-400 border border-white/[0.08] transition-colors"
         >
           Exit Console
         </button>

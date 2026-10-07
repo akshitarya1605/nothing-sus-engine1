@@ -506,7 +506,7 @@ function LobbyView({ state }: { state: ParticipantState }) {
       </div>
 
       {roomCode && (
-        <div className="w-full rounded-2xl border-2 border-cyan/30 bg-elevated p-3">
+        <div className="w-full rounded-[2.5rem] border-2 border-cyan/30 bg-elevated p-3">
           <p className="text-[10px] uppercase tracking-widest text-fg-faint font-bold">LOBBY ROOM CODE</p>
           <p className="font-mono text-2xl font-black tracking-wider text-cyan">{roomCode}</p>
         </div>

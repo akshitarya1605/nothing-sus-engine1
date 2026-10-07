@@ -76,7 +76,7 @@ export function FilterDecontamTask({ onSuccess, onCancel }: FilterDecontamTaskPr
   const clearedCount = particles.filter((p) => p.cleared).length;
 
   return (
-    <div className="bg-[#080d16] text-[#e7eef8] rounded-2xl border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
+    <div className="bg-[#080d16] text-[#e7eef8] rounded-[2.5rem] border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#29374a] pb-3">
         <div>
@@ -101,12 +101,12 @@ export function FilterDecontamTask({ onSuccess, onCancel }: FilterDecontamTaskPr
       </div>
 
       <p className="text-xs text-[#8798b0] leading-relaxed">
-        Tap and disintegrate all floating toxic bio-contaminants (<span className="text-red-400 font-bold">☣</span>) inside the primary vortex membrane.
+        Tap and disintegrate all floating toxic bio-contaminants (<span className="text-[#FF3B5C] font-bold">☣</span>) inside the primary vortex membrane.
       </p>
 
       {/* Vortex Filter Chamber */}
-      <div className="bg-[#070e18] p-4 rounded-2xl border border-[#29374a] flex flex-col items-center space-y-4">
-        <div className="relative w-64 h-64 rounded-full border-4 border-dashed border-emerald-900 bg-zinc-950 flex items-center justify-center overflow-hidden shadow-inner">
+      <div className="bg-[#070e18] p-4 rounded-[2.5rem] border border-[#29374a] flex flex-col items-center space-y-4">
+        <div className="relative w-64 h-64 rounded-full border-4 border-dashed border-emerald-900 bg-[#12121A]/60 backdrop-blur-[30px] flex items-center justify-center overflow-hidden shadow-inner">
           {/* Swirling Vortex lines */}
           <div className="absolute inset-4 rounded-full border border-emerald-950/60 animate-spin" />
           <div className="absolute inset-12 rounded-full border border-emerald-900/60" />
@@ -142,7 +142,7 @@ export function FilterDecontamTask({ onSuccess, onCancel }: FilterDecontamTaskPr
             <span>MEMBRANE PURITY</span>
             <span className="font-bold text-emerald-400">{Math.round((clearedCount / 6) * 100)}%</span>
           </div>
-          <div className="w-full h-2 rounded-full bg-zinc-900 overflow-hidden border border-zinc-800">
+          <div className="w-full h-2 rounded-full bg-black/50 overflow-hidden border border-white/[0.08]">
             <div
               className="h-full bg-emerald-500 transition-all duration-150"
               style={{ width: `${(clearedCount / 6) * 100}%` }}
@@ -159,7 +159,7 @@ export function FilterDecontamTask({ onSuccess, onCancel }: FilterDecontamTaskPr
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-700 transition-colors"
+          className="text-xs px-4 py-2 rounded-lg bg-black/50 hover:bg-white/[0.04] text-zinc-400 border border-white/[0.08] transition-colors"
         >
           Exit Console
         </button>

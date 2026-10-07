@@ -50,10 +50,15 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+import { FloatingBackButton } from "@/components/ui/FloatingBackButton";
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${fredoka.variable} ${nunito.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <FloatingBackButton />
+      </body>
     </html>
   );
 }

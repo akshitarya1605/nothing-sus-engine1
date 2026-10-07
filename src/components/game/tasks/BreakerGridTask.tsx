@@ -93,14 +93,14 @@ export function BreakerGridTask({ onSuccess, onCancel }: BreakerGridTaskProps) {
 
   const BREAKER_COLORS = [
     "border-amber-500 text-amber-400 bg-amber-950/30",
-    "border-cyan-500 text-cyan-400 bg-cyan-950/30",
-    "border-red-500 text-red-400 bg-red-950/30",
+    "border-cyan-500 text-[#00F0FF] bg-cyan-950/30",
+    "border-red-500 text-[#FF3B5C] bg-[#FF3B5C]/10/30",
     "border-emerald-500 text-emerald-400 bg-emerald-950/30",
     "border-purple-500 text-purple-400 bg-purple-950/30",
   ];
 
   return (
-    <div className="bg-[#080d16] text-[#e7eef8] rounded-2xl border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
+    <div className="bg-[#080d16] text-[#e7eef8] rounded-[2.5rem] border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#29374a] pb-3">
         <div>
@@ -129,7 +129,7 @@ export function BreakerGridTask({ onSuccess, onCancel }: BreakerGridTaskProps) {
       </p>
 
       {/* Breaker Switch Matrix */}
-      <div className="bg-[#070e18] p-5 rounded-2xl border border-[#29374a] space-y-4">
+      <div className="bg-[#070e18] p-5 rounded-[2.5rem] border border-[#29374a] space-y-4">
         <div className="grid grid-cols-5 gap-2">
           {[0, 1, 2, 3, 4].map((node) => {
             const isActive = activeBreaker === node;
@@ -171,7 +171,7 @@ export function BreakerGridTask({ onSuccess, onCancel }: BreakerGridTaskProps) {
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-700 transition-colors"
+          className="text-xs px-4 py-2 rounded-lg bg-black/50 hover:bg-white/[0.04] text-zinc-400 border border-white/[0.08] transition-colors"
         >
           Exit Console
         </button>

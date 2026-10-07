@@ -75,7 +75,7 @@ export default function RegisterPage() {
         />
 
         <div className="w-full max-w-md relative z-10">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950/90 backdrop-blur-xl p-6 sm:p-8 shadow-2xl">
+          <div className="rounded-[2.5rem] border border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px]/90 backdrop-blur-xl p-6 sm:p-8 shadow-2xl">
             {registered ? (
               <div className="text-center space-y-5 py-4">
                 <div className="inline-block px-3 py-1 rounded bg-amber-950/80 border border-amber-500/40 text-amber-400 font-mono text-xs uppercase tracking-wider font-bold animate-pulse">
@@ -86,11 +86,11 @@ export default function RegisterPage() {
                   Account Created
                 </h1>
 
-                <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 space-y-2 text-left text-xs font-mono">
+                <div className="p-4 rounded-xl bg-black/50 border border-white/[0.08] space-y-2 text-left text-xs font-mono">
                   <div className="text-zinc-500">STUDENT NAME</div>
                   <div className="text-white font-bold text-sm">{fullName}</div>
                   <div className="text-zinc-500 pt-1">COLLEGE REGISTRATION ID</div>
-                  <div className="text-cyan-400 font-bold">{collegeRegId.toUpperCase()}</div>
+                  <div className="text-[#00F0FF] font-bold">{collegeRegId.toUpperCase()}</div>
                 </div>
 
                 <p className="text-sm text-zinc-300 leading-relaxed">
@@ -100,7 +100,7 @@ export default function RegisterPage() {
                 <div className="pt-2">
                   <Link
                     href="/login"
-                    className="block w-full py-3 px-4 rounded-lg bg-red-600 hover:bg-red-500 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/50 text-center"
+                    className="block w-full py-3 px-4 rounded-lg bg-[#FF3B5C] hover:bg-white text-[#0B0B0F] text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/50 text-center"
                   >
                     Proceed to Login
                   </Link>
@@ -109,7 +109,7 @@ export default function RegisterPage() {
             ) : (
               <div>
                 <div className="mb-6">
-                  <span className="text-[10px] font-mono tracking-widest uppercase text-red-400 bg-red-950/60 border border-red-500/30 px-2.5 py-1 rounded">
+                  <span className="text-[10px] font-mono tracking-widest uppercase text-[#FF3B5C] bg-[#FF3B5C]/10/60 border border-[#FF3B5C]/30 px-2.5 py-1 rounded">
                     PLAYER REGISTRATION
                   </span>
                   <h1 className="text-2xl font-black uppercase tracking-tight mt-3 text-white">
@@ -121,7 +121,7 @@ export default function RegisterPage() {
                 </div>
 
                 {error && (
-                  <div className="mb-5 p-3 rounded-lg border border-red-500/30 bg-red-950/40 text-red-200 text-xs font-mono">
+                  <div className="mb-5 p-3 rounded-lg border border-[#FF3B5C]/30 bg-[#FF3B5C]/5 text-red-200 text-xs font-mono">
                     {error}
                   </div>
                 )}
@@ -137,7 +137,7 @@ export default function RegisterPage() {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="e.g. Arshpreet Singh"
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-red-500 font-sans"
+                      className="w-full px-3.5 py-2.5 rounded-lg bg-black/50 border border-white/[0.08] text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-red-500 font-sans"
                     />
                   </div>
 
@@ -151,7 +151,7 @@ export default function RegisterPage() {
                       value={collegeRegId}
                       onChange={(e) => setCollegeRegId(e.target.value)}
                       placeholder="e.g. 230910452"
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-red-500 font-mono uppercase"
+                      className="w-full px-3.5 py-2.5 rounded-lg bg-black/50 border border-white/[0.08] text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-red-500 font-mono uppercase"
                     />
                   </div>
 
@@ -165,7 +165,7 @@ export default function RegisterPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Create secure password"
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-red-500 font-mono"
+                      className="w-full px-3.5 py-2.5 rounded-lg bg-black/50 border border-white/[0.08] text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-red-500 font-mono"
                     />
                   </div>
 
@@ -179,7 +179,7 @@ export default function RegisterPage() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Re-enter password"
-                      className="w-full px-3.5 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-red-500 font-mono"
+                      className="w-full px-3.5 py-2.5 rounded-lg bg-black/50 border border-white/[0.08] text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-red-500 font-mono"
                     />
                   </div>
 
@@ -187,18 +187,18 @@ export default function RegisterPage() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full py-3 px-4 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/50 flex items-center justify-center gap-2"
+                      className="w-full py-3 px-4 rounded-lg bg-[#FF3B5C] hover:bg-white text-[#0B0B0F] disabled:opacity-50 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/50 flex items-center justify-center gap-2"
                     >
                       {loading ? "Creating Account..." : "Create Account"}
                     </button>
                   </div>
 
-                  <div className="pt-3 text-center border-t border-zinc-800/80">
+                  <div className="pt-3 text-center border-t border-white/[0.08]/80">
                     <p className="text-xs text-zinc-400">
                       Already registered?{" "}
                       <Link
                         href="/login"
-                        className="text-red-400 hover:text-red-300 font-mono underline ml-1"
+                        className="text-[#FF3B5C] hover:text-red-300 font-mono underline ml-1"
                       >
                         Log in here
                       </Link>

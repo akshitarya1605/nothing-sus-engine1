@@ -19,9 +19,7 @@ type TxClient = Prisma.TransactionClient;
 async function loadAndValidateTaskAccess(tx: TxClient, participantId: string, taskId: string) {
   const participant = await tx.participant.findUnique({ where: { id: participantId }, include: { game: true } });
   if (!participant) throw new GameEngineError("NOT_FOUND", "Participant not found");
-  if (participant.status !== ParticipantStatus.ALIVE) {
-    throw new GameEngineError("FORBIDDEN", "Eliminated participants cannot perform tasks");
-  }
+
   if (!LIVE_PLAY_STATUSES.includes(participant.game.status)) {
     throw new GameEngineError("CONFLICT", `Game is not in active play (status: ${participant.game.status})`);
   }
@@ -149,7 +147,7 @@ export async function submitTaskOtp(
             status: wasCorrect ? ParticipantTaskStatus.COMPLETED : existing.status,
             startedAt: existing.startedAt ?? new Date(),
             completedAt: wasCorrect ? new Date() : existing.completedAt,
-            score: wasCorrect ? task.points : existing.score,
+            score: wasCorrect ? (participant.status === ParticipantStatus.ALIVE ? task.points : 0) : existing.score,
             attemptCount: { increment: 1 },
             lastAttemptAt: new Date(),
           },
@@ -161,7 +159,7 @@ export async function submitTaskOtp(
             status: wasCorrect ? ParticipantTaskStatus.COMPLETED : ParticipantTaskStatus.IN_PROGRESS,
             startedAt: new Date(),
             completedAt: wasCorrect ? new Date() : null,
-            score: wasCorrect ? task.points : null,
+            score: wasCorrect ? (participant.status === ParticipantStatus.ALIVE ? task.points : 0) : null,
             attemptCount: 1,
             lastAttemptAt: new Date(),
           },
@@ -372,9 +370,7 @@ export async function submitPuzzleTask(
       include: { game: { include: { config: true } } },
     });
     if (!participant) throw new GameEngineError("NOT_FOUND", "Participant not found");
-    if (participant.status !== ParticipantStatus.ALIVE) {
-      throw new GameEngineError("FORBIDDEN", "Eliminated participants cannot submit tasks");
-    }
+
     if (!LIVE_PLAY_STATUSES.includes(participant.game.status)) {
       throw new GameEngineError("CONFLICT", `Game is not in active play (status: ${participant.game.status})`);
     }
@@ -446,7 +442,7 @@ export async function submitPuzzleTask(
           data: {
             status: ParticipantTaskStatus.COMPLETED,
             completedAt: new Date(),
-            score: task.points || 10,
+            score: participant.status === ParticipantStatus.ALIVE ? (task.points || 10) : 0,
           },
         })
       : await tx.participantTask.create({
@@ -455,7 +451,7 @@ export async function submitPuzzleTask(
             taskId: task.id,
             status: ParticipantTaskStatus.COMPLETED,
             completedAt: new Date(),
-            score: task.points || 10,
+            score: participant.status === ParticipantStatus.ALIVE ? (task.points || 10) : 0,
           },
         });
 

@@ -77,7 +77,7 @@ export function MeetingChat({ meetingId, isAlive, currentParticipantId }: Meetin
   };
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 space-y-3 flex flex-col h-72">
+    <div className="rounded-[2.5rem] border border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px] p-4 space-y-3 flex flex-col h-72">
       <div className="flex items-center justify-between border-b border-zinc-850 pb-2">
         <span className="text-[11px] font-mono font-bold uppercase text-zinc-300 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -101,8 +101,8 @@ export function MeetingChat({ meetingId, isAlive, currentParticipantId }: Meetin
                 key={m.id}
                 className={`p-2 rounded-xl max-w-[85%] break-words ${
                   isMe
-                    ? "ml-auto bg-cyan-950/70 border border-cyan-800/40 text-cyan-200"
-                    : "mr-auto bg-zinc-900 border border-zinc-800 text-zinc-200"
+                    ? "ml-auto bg-[#00F0FF]/10 border border-cyan-800/40 text-cyan-200"
+                    : "mr-auto bg-black/50 border border-white/[0.08] text-zinc-200"
                 }`}
               >
                 <div className="text-[9px] font-bold text-zinc-400 mb-0.5 flex items-center justify-between gap-2">
@@ -120,7 +120,7 @@ export function MeetingChat({ meetingId, isAlive, currentParticipantId }: Meetin
       </div>
 
       {errorMsg && (
-        <div className="text-[10px] font-mono text-red-400 bg-red-950/80 border border-red-500/40 px-2 py-1 rounded">
+        <div className="text-[10px] font-mono text-[#FF3B5C] bg-[#FF3B5C]/10 border border-[#FF3B5C]/30 px-2 py-1 rounded">
           {errorMsg}
         </div>
       )}
@@ -135,7 +135,7 @@ export function MeetingChat({ meetingId, isAlive, currentParticipantId }: Meetin
             onChange={(e) => setInputText(e.target.value)}
             placeholder="Type broadcast message..."
             disabled={sending}
-            className="flex-1 px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
+            className="flex-1 px-3 py-2 rounded-xl bg-black/50 border border-white/[0.08] text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
           />
           <button
             type="submit"
@@ -146,7 +146,7 @@ export function MeetingChat({ meetingId, isAlive, currentParticipantId }: Meetin
           </button>
         </form>
       ) : (
-        <div className="p-2 rounded-xl bg-zinc-900/60 border border-zinc-800 text-center text-[10px] font-mono text-zinc-500">
+        <div className="p-2 rounded-xl bg-black/50/60 border border-white/[0.08] text-center text-[10px] font-mono text-zinc-500">
           👻 You are eliminated. Dead players cannot speak during meetings.
         </div>
       )}

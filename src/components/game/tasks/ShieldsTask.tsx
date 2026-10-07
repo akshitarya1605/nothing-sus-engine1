@@ -24,21 +24,21 @@ export function ShieldsTask({ onSuccess, onCancel }: ShieldsTaskProps) {
   const primedCount = shields.filter(Boolean).length;
 
   return (
-    <div className="bg-[#080d16] text-[#e7eef8] rounded-2xl border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-sm w-full text-center">
+    <div className="bg-[#080d16] text-[#e7eef8] rounded-[2.5rem] border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-sm w-full text-center">
       <div className="border-b border-[#29374a] pb-3 flex items-center justify-between">
         <div className="text-left">
-          <span className="text-[10px] tracking-widest uppercase text-cyan-400 font-bold">
+          <span className="text-[10px] tracking-widest uppercase text-[#00F0FF] font-bold">
             DEFENSE STATION
           </span>
           <h2 className="text-base font-black uppercase text-white">Prime Shields</h2>
         </div>
-        <span className="text-xs px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-cyan-300 font-bold">
+        <span className="text-xs px-2 py-0.5 rounded bg-black/50 border border-white/[0.08] text-[#00F0FF] font-bold">
           {primedCount} / 7 Primed
         </span>
       </div>
 
       <p className="text-xs text-[#8798b0]">
-        Tap all unprimed <span className="text-red-400 font-bold">red</span> shields to activate deflector power until all 7 are <span className="text-emerald-400 font-bold">green</span>.
+        Tap all unprimed <span className="text-[#FF3B5C] font-bold">red</span> shields to activate deflector power until all 7 are <span className="text-emerald-400 font-bold">green</span>.
       </p>
 
       {/* Hexagonal Shield Grid */}
@@ -50,10 +50,10 @@ export function ShieldsTask({ onSuccess, onCancel }: ShieldsTaskProps) {
               key={idx}
               type="button"
               onClick={() => toggleShield(idx)}
-              className={`w-16 h-16 rounded-2xl border-2 transition-all flex items-center justify-center text-lg ${
+              className={`w-16 h-16 rounded-[2.5rem] border-2 transition-all flex items-center justify-center text-lg ${
                 shields[idx]
                   ? "bg-emerald-950/80 border-emerald-400 text-emerald-300 shadow-[0_0_15px_rgba(52,211,153,0.4)]"
-                  : "bg-red-950/80 border-red-500 text-red-300 animate-pulse"
+                  : "bg-[#FF3B5C]/10 border-red-500 text-red-300 animate-pulse"
               }`}
             >
               {shields[idx] ? "🛡️" : "⚠️"}
@@ -68,10 +68,10 @@ export function ShieldsTask({ onSuccess, onCancel }: ShieldsTaskProps) {
               key={idx}
               type="button"
               onClick={() => toggleShield(idx)}
-              className={`w-16 h-16 rounded-2xl border-2 transition-all flex items-center justify-center text-lg ${
+              className={`w-16 h-16 rounded-[2.5rem] border-2 transition-all flex items-center justify-center text-lg ${
                 shields[idx]
                   ? "bg-emerald-950/80 border-emerald-400 text-emerald-300 shadow-[0_0_15px_rgba(52,211,153,0.4)]"
-                  : "bg-red-950/80 border-red-500 text-red-300 animate-pulse"
+                  : "bg-[#FF3B5C]/10 border-red-500 text-red-300 animate-pulse"
               }`}
             >
               {shields[idx] ? "🛡️" : "⚠️"}
@@ -86,10 +86,10 @@ export function ShieldsTask({ onSuccess, onCancel }: ShieldsTaskProps) {
               key={idx}
               type="button"
               onClick={() => toggleShield(idx)}
-              className={`w-16 h-16 rounded-2xl border-2 transition-all flex items-center justify-center text-lg ${
+              className={`w-16 h-16 rounded-[2.5rem] border-2 transition-all flex items-center justify-center text-lg ${
                 shields[idx]
                   ? "bg-emerald-950/80 border-emerald-400 text-emerald-300 shadow-[0_0_15px_rgba(52,211,153,0.4)]"
-                  : "bg-red-950/80 border-red-500 text-red-300 animate-pulse"
+                  : "bg-[#FF3B5C]/10 border-red-500 text-red-300 animate-pulse"
               }`}
             >
               {shields[idx] ? "🛡️" : "⚠️"}
@@ -105,7 +105,7 @@ export function ShieldsTask({ onSuccess, onCancel }: ShieldsTaskProps) {
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs px-3 py-1.5 rounded-lg bg-zinc-900 text-zinc-400 border border-zinc-700"
+          className="text-xs px-3 py-1.5 rounded-lg bg-black/50 text-zinc-400 border border-white/[0.08]"
         >
           Exit
         </button>

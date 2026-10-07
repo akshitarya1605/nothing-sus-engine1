@@ -119,7 +119,7 @@ export function EngineCalibrationTask({ onSuccess, onCancel }: EngineCalibration
   };
 
   return (
-    <div className="bg-[#080d16] text-[#e7eef8] rounded-2xl border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
+    <div className="bg-[#080d16] text-[#e7eef8] rounded-[2.5rem] border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#29374a] pb-3">
         <div>
@@ -148,9 +148,9 @@ export function EngineCalibrationTask({ onSuccess, onCancel }: EngineCalibration
       </p>
 
       {/* Flywheel Gauge Visual */}
-      <div className="bg-[#070e18] p-5 rounded-2xl border border-[#29374a] space-y-4">
+      <div className="bg-[#070e18] p-5 rounded-[2.5rem] border border-[#29374a] space-y-4">
         {/* Track */}
-        <div className="relative h-12 bg-zinc-950 rounded-xl border border-zinc-800 overflow-hidden flex items-center shadow-inner">
+        <div className="relative h-12 bg-[#12121A]/60 backdrop-blur-[30px] rounded-xl border border-white/[0.08] overflow-hidden flex items-center shadow-inner">
           {/* Target Zone */}
           <div
             className="absolute top-0 bottom-0 bg-emerald-500/30 border-x-2 border-emerald-400 flex items-center justify-center"
@@ -195,7 +195,7 @@ export function EngineCalibrationTask({ onSuccess, onCancel }: EngineCalibration
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-700 transition-colors"
+          className="text-xs px-4 py-2 rounded-lg bg-black/50 hover:bg-white/[0.04] text-zinc-400 border border-white/[0.08] transition-colors"
         >
           Exit Console
         </button>

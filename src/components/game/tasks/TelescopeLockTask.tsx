@@ -86,11 +86,11 @@ export function TelescopeLockTask({ onSuccess, onCancel }: TelescopeLockTaskProp
   };
 
   return (
-    <div className="bg-[#080d16] text-[#e7eef8] rounded-2xl border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
+    <div className="bg-[#080d16] text-[#e7eef8] rounded-[2.5rem] border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#29374a] pb-3">
         <div>
-          <span className="text-[10px] tracking-widest uppercase text-cyan-400 font-bold">
+          <span className="text-[10px] tracking-widest uppercase text-[#00F0FF] font-bold">
             OBSERVATORY DOME // HARD TASK
           </span>
           <h2 className="text-lg font-black uppercase text-white tracking-tight">
@@ -104,7 +104,7 @@ export function TelescopeLockTask({ onSuccess, onCancel }: TelescopeLockTaskProp
           >
             {sound ? "🔊" : "🔇"}
           </button>
-          <span className="text-xs px-2.5 py-1 rounded bg-[#1b293c] border border-[#29374a] text-cyan-400 font-bold">
+          <span className="text-xs px-2.5 py-1 rounded bg-[#1b293c] border border-[#29374a] text-[#00F0FF] font-bold">
             PULSAR TRACK
           </span>
         </div>
@@ -115,8 +115,8 @@ export function TelescopeLockTask({ onSuccess, onCancel }: TelescopeLockTaskProp
       </p>
 
       {/* Deep Space Starfield Map */}
-      <div className="bg-[#070e18] p-4 rounded-2xl border border-[#29374a] flex flex-col items-center space-y-4">
-        <div className="relative w-64 h-64 rounded-2xl border-2 border-zinc-800 bg-black overflow-hidden shadow-2xl">
+      <div className="bg-[#070e18] p-4 rounded-[2.5rem] border border-[#29374a] flex flex-col items-center space-y-4">
+        <div className="relative w-64 h-64 rounded-[2.5rem] border-2 border-white/[0.08] bg-black overflow-hidden shadow-2xl">
           {/* Static stars background */}
           <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
 
@@ -148,9 +148,9 @@ export function TelescopeLockTask({ onSuccess, onCancel }: TelescopeLockTaskProp
         <div className="w-full space-y-1">
           <div className="flex justify-between text-[10px] text-zinc-400">
             <span>SPECTRAL FREQUENCY LOCK</span>
-            <span className="font-bold text-cyan-400">{lockHold}%</span>
+            <span className="font-bold text-[#00F0FF]">{lockHold}%</span>
           </div>
-          <div className="w-full h-2 rounded-full bg-zinc-900 overflow-hidden border border-zinc-800">
+          <div className="w-full h-2 rounded-full bg-black/50 overflow-hidden border border-white/[0.08]">
             <div
               className={`h-full transition-all duration-75 ${
                 lockHold > 80 ? "bg-emerald-400" : "bg-cyan-400"
@@ -166,7 +166,7 @@ export function TelescopeLockTask({ onSuccess, onCancel }: TelescopeLockTaskProp
           <button
             type="button"
             onClick={() => moveReticle(0, -18)}
-            className="py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold active:scale-95"
+            className="py-3 rounded-xl bg-black/50 hover:bg-white/[0.04] border border-white/[0.08] text-white font-bold active:scale-95"
           >
             ▲
           </button>
@@ -175,21 +175,21 @@ export function TelescopeLockTask({ onSuccess, onCancel }: TelescopeLockTaskProp
           <button
             type="button"
             onClick={() => moveReticle(-18, 0)}
-            className="py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold active:scale-95"
+            className="py-3 rounded-xl bg-black/50 hover:bg-white/[0.04] border border-white/[0.08] text-white font-bold active:scale-95"
           >
             ◀
           </button>
           <button
             type="button"
             onClick={() => moveReticle(0, 18)}
-            className="py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold active:scale-95"
+            className="py-3 rounded-xl bg-black/50 hover:bg-white/[0.04] border border-white/[0.08] text-white font-bold active:scale-95"
           >
             ▼
           </button>
           <button
             type="button"
             onClick={() => moveReticle(18, 0)}
-            className="py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold active:scale-95"
+            className="py-3 rounded-xl bg-black/50 hover:bg-white/[0.04] border border-white/[0.08] text-white font-bold active:scale-95"
           >
             ▶
           </button>
@@ -204,7 +204,7 @@ export function TelescopeLockTask({ onSuccess, onCancel }: TelescopeLockTaskProp
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-700 transition-colors"
+          className="text-xs px-4 py-2 rounded-lg bg-black/50 hover:bg-white/[0.04] text-zinc-400 border border-white/[0.08] transition-colors"
         >
           Exit Console
         </button>

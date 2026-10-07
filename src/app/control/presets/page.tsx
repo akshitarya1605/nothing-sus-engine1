@@ -209,10 +209,10 @@ export default function PresetsControlPage() {
       <IsaHeader />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono tracking-widest uppercase text-red-400 bg-red-950/60 border border-red-500/30 px-2 py-0.5 rounded">
+              <span className="text-[10px] font-mono tracking-widest uppercase text-[#FF3B5C] bg-[#FF3B5C]/10/60 border border-[#FF3B5C]/30 px-2 py-0.5 rounded">
                 GAME ARCHITECT
               </span>
               <span className="text-xs font-mono text-zinc-500">TASK & ROOM PRESETS</span>
@@ -228,13 +228,13 @@ export default function PresetsControlPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/control"
-              className="px-3.5 py-2 rounded-lg bg-zinc-900 border border-zinc-700 hover:border-zinc-500 text-xs font-mono font-medium text-zinc-200 transition-colors"
+              className="px-3.5 py-2 rounded-lg bg-black/50 border border-white/[0.08] hover:border-zinc-500 text-xs font-mono font-medium text-zinc-200 transition-colors"
             >
               ← Back to Game Control
             </Link>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-mono font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/40"
+              className="px-4 py-2 rounded-lg bg-[#FF3B5C] hover:bg-white text-[#0B0B0F] text-white text-xs font-mono font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/40"
             >
               + Create New Preset
             </button>
@@ -246,7 +246,7 @@ export default function PresetsControlPage() {
             className={`p-3 rounded-lg border text-xs font-mono ${
               toast.kind === "ok"
                 ? "bg-emerald-950/80 border-emerald-500/40 text-emerald-200"
-                : "bg-red-950/80 border-red-500/40 text-red-200"
+                : "bg-[#FF3B5C]/10 border-[#FF3B5C]/30 text-red-200"
             }`}
           >
             {toast.msg}
@@ -260,14 +260,14 @@ export default function PresetsControlPage() {
               Loading presets...
             </div>
           ) : presets.length === 0 ? (
-            <div className="col-span-full py-16 text-center rounded-xl border border-zinc-800 bg-zinc-950/60 p-8 space-y-3">
+            <div className="col-span-full py-16 text-center rounded-xl border border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px]/60 p-8 space-y-3">
               <p className="text-sm font-semibold text-zinc-300">No game presets found</p>
               <p className="text-xs text-zinc-500 max-w-md mx-auto">
                 Create your first preset template with physical campus tasks, room numbers, and weapon locations.
               </p>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="mt-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-mono uppercase tracking-wider"
+                className="mt-2 px-4 py-2 rounded-lg bg-[#FF3B5C] hover:bg-white text-[#0B0B0F] text-white text-xs font-mono uppercase tracking-wider"
               >
                 Create Preset Now
               </button>
@@ -276,12 +276,12 @@ export default function PresetsControlPage() {
             presets.map((p) => (
               <div
                 key={p.id}
-                className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-5 space-y-4 flex flex-col justify-between hover:border-zinc-700 transition-all shadow-lg shadow-black/40"
+                className="rounded-xl border border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px]/80 p-5 space-y-4 flex flex-col justify-between hover:border-white/[0.08] transition-all shadow-lg shadow-black/40"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-bold text-white text-base tracking-tight">{p.name}</h3>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-black/50 border border-white/[0.08] text-zinc-400">
                       {p.tasks.length} Tasks
                     </span>
                   </div>
@@ -289,14 +289,14 @@ export default function PresetsControlPage() {
                     <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{p.description}</p>
                   )}
 
-                  <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-zinc-800/80 text-[11px] font-mono">
+                  <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-white/[0.08]/80 text-[11px] font-mono">
                     <div>
                       <span className="text-zinc-500 block text-[9px]">MAX PLAYERS</span>
                       <span className="text-zinc-200">{p.maxPlayers} Players</span>
                     </div>
                     <div>
                       <span className="text-zinc-500 block text-[9px]">IMPOSTORS</span>
-                      <span className="text-red-400 font-bold">{p.imposterCount} Impostors</span>
+                      <span className="text-[#FF3B5C] font-bold">{p.imposterCount} Impostors</span>
                     </div>
                     <div>
                       <span className="text-zinc-500 block text-[9px]">KILL COOLDOWN</span>
@@ -311,14 +311,14 @@ export default function PresetsControlPage() {
                   </div>
 
                   {/* Task list preview */}
-                  <div className="mt-4 pt-3 border-t border-zinc-800/80 space-y-1.5">
+                  <div className="mt-4 pt-3 border-t border-white/[0.08]/80 space-y-1.5">
                     <span className="text-[10px] font-mono uppercase text-zinc-500 block">
                       Task Highlights
                     </span>
                     {p.tasks.slice(0, 3).map((t, i) => (
                       <div
                         key={i}
-                        className="text-xs text-zinc-300 flex items-center justify-between bg-zinc-900/60 px-2 py-1 rounded"
+                        className="text-xs text-zinc-300 flex items-center justify-between bg-black/50/60 px-2 py-1 rounded"
                       >
                         <span className="truncate pr-2">{t.title}</span>
                         <span className="text-[10px] font-mono text-zinc-500 shrink-0">
@@ -334,18 +334,18 @@ export default function PresetsControlPage() {
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-zinc-800/80 flex items-center gap-2">
+                <div className="pt-3 border-t border-white/[0.08]/80 flex items-center gap-2">
                   <button
                     onClick={() => handleLoadIntoGame(p)}
                     disabled={actionBusy === `load-${p.id}`}
-                    className="flex-1 py-2 px-3 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all"
+                    className="flex-1 py-2 px-3 rounded-lg bg-[#FF3B5C] hover:bg-white text-[#0B0B0F] disabled:opacity-50 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all"
                   >
                     {actionBusy === `load-${p.id}` ? "Loading..." : "Load into Game"}
                   </button>
                   <button
                     onClick={() => handleDelete(p.id)}
                     disabled={actionBusy === p.id}
-                    className="py-2 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-red-400 border border-zinc-800 font-mono text-xs transition-colors"
+                    className="py-2 px-3 rounded-lg bg-black/50 hover:bg-white/[0.04] text-zinc-400 hover:text-[#FF3B5C] border border-white/[0.08] font-mono text-xs transition-colors"
                   >
                     Delete
                   </button>
@@ -358,8 +358,8 @@ export default function PresetsControlPage() {
         {/* Modal: Create Preset */}
         {showCreateModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-            <div className="w-full max-w-2xl bg-zinc-950 border border-zinc-800 rounded-2xl p-6 sm:p-8 space-y-6 my-8 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
+            <div className="w-full max-w-2xl bg-[#12121A]/60 backdrop-blur-[30px] border border-white/[0.08] rounded-2xl p-6 sm:p-8 space-y-6 my-8 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
                 <div>
                   <h2 className="text-xl font-bold text-white">Create Game Preset</h2>
                   <p className="text-xs text-zinc-400">Configure tasks and gameplay parameters</p>
@@ -384,7 +384,7 @@ export default function PresetsControlPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="e.g. Campus Round 1 - AB1 Engineering Lab Setup"
-                      className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500"
+                      className="w-full px-3 py-2 rounded-lg bg-black/50 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500"
                     />
                   </div>
 
@@ -397,7 +397,7 @@ export default function PresetsControlPage() {
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="e.g. 30 players, 3 impostors, AB1 Ground + 2nd floor tasks"
-                      className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500"
+                      className="w-full px-3 py-2 rounded-lg bg-black/50 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500"
                     />
                   </div>
 
@@ -411,7 +411,7 @@ export default function PresetsControlPage() {
                       max={100}
                       value={maxPlayers}
                       onChange={(e) => setMaxPlayers(parseInt(e.target.value) || 30)}
-                      className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-white focus:outline-none focus:border-red-500 font-mono"
+                      className="w-full px-3 py-2 rounded-lg bg-black/50 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-red-500 font-mono"
                     />
                   </div>
 
@@ -425,7 +425,7 @@ export default function PresetsControlPage() {
                       max={10}
                       value={imposterCount}
                       onChange={(e) => setImposterCount(parseInt(e.target.value) || 3)}
-                      className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-white focus:outline-none focus:border-red-500 font-mono"
+                      className="w-full px-3 py-2 rounded-lg bg-black/50 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-red-500 font-mono"
                     />
                   </div>
 
@@ -439,7 +439,7 @@ export default function PresetsControlPage() {
                       max={300}
                       value={killCooldownSeconds}
                       onChange={(e) => setKillCooldownSeconds(parseInt(e.target.value) || 60)}
-                      className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-white focus:outline-none focus:border-red-500 font-mono"
+                      className="w-full px-3 py-2 rounded-lg bg-black/50 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-red-500 font-mono"
                     />
                   </div>
 
@@ -452,7 +452,7 @@ export default function PresetsControlPage() {
                       value={weaponLocation}
                       onChange={(e) => setWeaponLocation(e.target.value)}
                       placeholder="e.g. AB1 Room 302, Under Podium"
-                      className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500"
+                      className="w-full px-3 py-2 rounded-lg bg-black/50 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500"
                     />
                   </div>
 
@@ -465,13 +465,13 @@ export default function PresetsControlPage() {
                       value={weaponClue}
                       onChange={(e) => setWeaponClue(e.target.value)}
                       placeholder="e.g. Near the oscilloscope on the second workbench"
-                      className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500"
+                      className="w-full px-3 py-2 rounded-lg bg-black/50 border border-white/[0.08] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500"
                     />
                   </div>
                 </div>
 
                 {/* Tasks management in preset */}
-                <div className="border-t border-zinc-800 pt-5 space-y-4">
+                <div className="border-t border-white/[0.08] pt-5 space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-bold text-white font-mono uppercase">
@@ -484,7 +484,7 @@ export default function PresetsControlPage() {
                     <button
                       type="button"
                       onClick={handleAddTask}
-                      className="px-3 py-1.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-mono text-zinc-200"
+                      className="px-3 py-1.5 rounded bg-black/50 hover:bg-white/[0.04] border border-white/[0.08] text-xs font-mono text-zinc-200"
                     >
                       + Add Task
                     </button>
@@ -494,7 +494,7 @@ export default function PresetsControlPage() {
                     {tasks.map((task, idx) => (
                       <div
                         key={idx}
-                        className="p-3.5 rounded-lg border border-zinc-800 bg-zinc-900/50 space-y-3"
+                        className="p-3.5 rounded-lg border border-white/[0.08] bg-black/50/50 space-y-3"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-[10px] font-mono text-zinc-400 uppercase">
@@ -503,7 +503,7 @@ export default function PresetsControlPage() {
                           <button
                             type="button"
                             onClick={() => handleRemoveTask(idx)}
-                            className="text-xs text-red-400 hover:text-red-300 font-mono"
+                            className="text-xs text-[#FF3B5C] hover:text-red-300 font-mono"
                           >
                             Remove
                           </button>
@@ -516,7 +516,7 @@ export default function PresetsControlPage() {
                               value={task.title}
                               onChange={(e) => handleTaskChange(idx, "title", e.target.value)}
                               placeholder="Task Title (e.g. Verify Router Status)"
-                              className="w-full px-2.5 py-1.5 rounded bg-zinc-900 border border-zinc-800 text-xs text-white focus:outline-none focus:border-red-500"
+                              className="w-full px-2.5 py-1.5 rounded bg-black/50 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-red-500"
                             />
                           </div>
                           <div>
@@ -525,7 +525,7 @@ export default function PresetsControlPage() {
                               value={task.roomName || ""}
                               onChange={(e) => handleTaskChange(idx, "roomName", e.target.value)}
                               placeholder="Location / Room (e.g. AB1 Lab 204)"
-                              className="w-full px-2.5 py-1.5 rounded bg-zinc-900 border border-zinc-800 text-xs text-white focus:outline-none focus:border-red-500"
+                              className="w-full px-2.5 py-1.5 rounded bg-black/50 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-red-500"
                             />
                           </div>
                           <div className="sm:col-span-2">
@@ -536,7 +536,7 @@ export default function PresetsControlPage() {
                                 handleTaskChange(idx, "description", e.target.value)
                               }
                               placeholder="Brief instructions for the student"
-                              className="w-full px-2.5 py-1.5 rounded bg-zinc-900 border border-zinc-800 text-xs text-white focus:outline-none focus:border-red-500"
+                              className="w-full px-2.5 py-1.5 rounded bg-black/50 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-red-500"
                             />
                           </div>
                           <div className="flex items-center gap-2">
@@ -551,7 +551,7 @@ export default function PresetsControlPage() {
                               onChange={(e) =>
                                 handleTaskChange(idx, "points", parseInt(e.target.value) || 10)
                               }
-                              className="w-20 px-2 py-1 rounded bg-zinc-900 border border-zinc-800 text-xs font-mono text-white"
+                              className="w-20 px-2 py-1 rounded bg-black/50 border border-white/[0.08] text-xs font-mono text-white"
                             />
                           </div>
                           <div className="flex items-center gap-2">
@@ -567,7 +567,7 @@ export default function PresetsControlPage() {
                                   e.target.value as PresetTask["difficulty"]
                                 )
                               }
-                              className="px-2 py-1 rounded bg-zinc-900 border border-zinc-800 text-xs font-mono text-white"
+                              className="px-2 py-1 rounded bg-black/50 border border-white/[0.08] text-xs font-mono text-white"
                             >
                               <option value="EASY">EASY</option>
                               <option value="MEDIUM">MEDIUM</option>
@@ -581,18 +581,18 @@ export default function PresetsControlPage() {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-zinc-800 flex items-center justify-end gap-3">
+                <div className="pt-4 border-t border-white/[0.08] flex items-center justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-mono text-xs uppercase"
+                    className="px-4 py-2 rounded-lg bg-black/50 hover:bg-white/[0.04] text-zinc-300 font-mono text-xs uppercase"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={actionBusy === "create"}
-                    className="px-5 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/40"
+                    className="px-5 py-2 rounded-lg bg-[#FF3B5C] hover:bg-white text-[#0B0B0F] text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/40"
                   >
                     {actionBusy === "create" ? "Saving..." : "Save Preset Blueprint"}
                   </button>

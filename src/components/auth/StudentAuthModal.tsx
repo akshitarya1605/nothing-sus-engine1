@@ -96,7 +96,7 @@ export function StudentAuthModal({ open, onClose, onAccountCreated, currentAccou
 
         {currentAccount ? (
           <div className="space-y-4 text-center">
-            <div className="rounded-2xl border border-cyan/30 bg-elevated p-4 space-y-1">
+            <div className="rounded-[2.5rem] border border-cyan/30 bg-elevated p-4 space-y-1">
               <p className="font-display text-lg font-bold text-yellow">{currentAccount.name}</p>
               <p className="font-mono text-xs text-cyan font-bold">Reg ID: {currentAccount.collegeRegId}</p>
               <p className="font-mono text-xs text-fg-faint">PIN Code: {currentAccount.code}</p>

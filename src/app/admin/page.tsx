@@ -67,7 +67,7 @@ import {
   Wrench,
   X,
   Zap,
-} from "lucide-react";
+Trash2, Plus, Camera, MessageSquare } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 const manrope = Manrope({
@@ -459,7 +459,7 @@ function SegmentedTabs<T extends string>({
     >
       <span
         aria-hidden
-        className="absolute inset-y-1 left-1 rounded-full border border-[#00F0FF]/40 bg-[#00F0FF]/[0.1] shadow-[0_0_24px_-6px_rgba(0,240,255,0.6)] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        className={`absolute inset-y-1 left-1 rounded-full border transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${value === 'imposter' ? 'border-[#FF3B5C]/40 bg-[#FF3B5C]/[0.15] shadow-[0_0_24px_-6px_rgba(255,59,92,0.6)]' : 'border-[#00F0FF]/40 bg-[#00F0FF]/[0.1] shadow-[0_0_24px_-6px_rgba(0,240,255,0.6)]'}`}
         style={{ width: `calc((100% - 0.5rem) / ${items.length})`, transform: `translateX(${idx * 100}%)` }}
       />
       {items.map((item) => {
@@ -696,7 +696,7 @@ function Hero({ mode, roomCode, status }: { mode: "live" | "demo"; roomCode: str
           </h1>
 
           <p className="mt-6 max-w-xl text-base leading-relaxed text-zinc-400 sm:text-lg">
-            Mission control for <span className="font-semibold text-zinc-200">Nothing Sus</span> — 30 engineers racing
+            Mission control for <span className="font-semibold text-zinc-200">Nothing Sus</span> — 25 engineers racing
             multi-disciplinary tasks to a point target while{" "}
             <span className="font-semibold text-[#FF3B5C]">4 hidden impostors</span> tag, sabotage and deceive. Track
             every player, call meetings, run sabotage clocks and rule on the endgame.
@@ -709,7 +709,7 @@ function Hero({ mode, roomCode, status }: { mode: "live" | "demo"; roomCode: str
             </GhostButton>
           </div>
 
-          <dl className="mt-10 grid w-full max-w-xl grid-cols-3 divide-x divide-white/[0.06] rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+          <dl className="mt-10 grid w-full max-w-xl grid-cols-3 divide-x divide-white/[0.06] rounded-[2.5rem] border border-white/[0.06] bg-white/[0.02]">
             {[
               { k: "Room", v: roomCode ?? (mode === "live" ? "Not set" : "DEMO") },
               { k: "Engine", v: mode === "live" ? status.replace("_", " ") : "Offline" },
@@ -1004,7 +1004,7 @@ function RosterPanel({
                   onClick={() => setSelectedId(isSel ? null : p.id)}
                   aria-pressed={isSel}
                   className={cn(
-                    "group flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition-all duration-300 hover:-translate-y-0.5",
+                    "group flex w-full items-center gap-3 rounded-[2.5rem] border p-2.5 text-left transition-all duration-300 hover:-translate-y-0.5",
                     isSel
                       ? "border-[#00F0FF]/50 bg-[#00F0FF]/[0.07]"
                       : isImp
@@ -1044,7 +1044,7 @@ function RosterPanel({
             );
           })}
           {visible.length === 0 && (
-            <li className="col-span-full rounded-2xl border border-dashed border-white/[0.08] py-12 text-center text-sm text-zinc-500">
+            <li className="col-span-full rounded-[2.5rem] border border-dashed border-white/[0.08] py-12 text-center text-sm text-zinc-500">
               No players match this filter.
             </li>
           )}
@@ -1052,11 +1052,11 @@ function RosterPanel({
       </div>
 
       {/* inspector */}
-      <aside className="rounded-2xl border border-white/[0.06] bg-black/25 p-5">
+      <aside className="rounded-[2.5rem] border border-white/[0.06] bg-black/25 p-5">
         {selected ? (
           <div className="flex h-full flex-col">
             <div className="flex items-center gap-3">
-              <span className="grid h-14 w-14 place-items-center rounded-2xl border border-white/[0.06] bg-black/40">
+              <span className="grid h-14 w-14 place-items-center rounded-[2.5rem] border border-white/[0.06] bg-black/40">
                 <CrewGlyph color={selected.color} dimmed={selected.status === "GHOST"} className="h-10 w-10" />
               </span>
               <div className="min-w-0">
@@ -1129,7 +1129,7 @@ function RosterPanel({
           </div>
         ) : (
           <div className="flex h-full min-h-[220px] flex-col items-center justify-center text-center">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+            <span className="grid h-12 w-12 place-items-center rounded-[2.5rem] border border-white/[0.06] bg-white/[0.02]">
               <Crosshair className="h-5 w-5 text-zinc-500" />
             </span>
             <p className="mt-4 text-sm font-bold text-zinc-200">Select a player</p>
@@ -1172,68 +1172,251 @@ function ProgressRing({ value, size = 168 }: { value: number; size?: number }) {
   );
 }
 
+
 function TasksPanel({ points, live }: { points: number; live: LiveState["taskProgress"] | null }) {
   const pct = Math.min(100, Math.round((points / POINT_TARGET) * 100));
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [pointsVal, setPointsVal] = useState(10);
+  const [difficulty, setDifficulty] = useState("EASY");
+  const [requiresPhoto, setRequiresPhoto] = useState(false);
+  const [requiresAnswer, setRequiresAnswer] = useState(false);
+  const [forImposter, setForImposter] = useState(false);
+
+  useEffect(() => {
+    const fetchTasks = async () => { try { const res = await fetch("/api/game/tasks"); const data = await res.json(); if(data.success) setTasks(data.tasks); } catch (e) { console.error(e); } finally { setLoading(false); } }; fetchTasks();
+  }, []);
+
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/game/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description, points: pointsVal, difficulty, requiresPhoto, requiresAnswer, forImposter }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTasks([data.task, ...tasks]);
+        setTitle("");
+        setDescription("");
+        setPointsVal(10);
+        setRequiresPhoto(false);
+        setRequiresAnswer(false);
+        setForImposter(false);
+      } else {
+        alert("Failed to inject task: " + (data.message || data.error || "Unknown error (Did you update the database?)"));
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this task?")) return;
+    try {
+      await fetch(`/api/game/tasks/${id}`, { method: "DELETE" });
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const taskTabs = [
+    { id: "crewmate", label: "Crewmate" },
+    { id: "imposter", label: "Imposter" },
+  ];
+  const [activeTaskTab, setActiveTaskTab] = useState<"crewmate" | "imposter">("crewmate");
+
+  const filteredTasks = tasks.filter(t => activeTaskTab === "imposter" ? t.forImposter : !t.forImposter);
+
   return (
-    <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.06] bg-black/25 p-6">
-        <div className="relative">
-          <ProgressRing value={pct / 100} />
-          <div className="absolute inset-0 grid place-items-center text-center">
+    <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
+      {/* ADD TASK PANEL */}
+      <div className="flex flex-col border border-white/[0.06] bg-black/25 rounded-[2.5rem] p-6 h-fit relative overflow-hidden">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-300 mb-4 flex items-center gap-2 relative z-10">
+          <Plus className="w-4 h-4 text-emerald-400" /> Add New Mission
+        </h3>
+        <form onSubmit={handleCreate} className="space-y-4 relative z-10">
+          <div>
+            <label className="block text-[10px] font-sans font-bold uppercase tracking-wider text-zinc-400 mb-1">Target Audience</label>
+            <SegmentedTabs 
+              label="Audience" 
+              idPrefix="task-audience" 
+              value={forImposter ? "imposter" : "crewmate"} 
+              onChange={(v) => setForImposter(v === "imposter")}
+              items={[
+                { id: "crewmate", label: "Crewmates" },
+                { id: "imposter", label: "Imposters" }
+              ]} 
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-sans font-bold uppercase tracking-wider text-zinc-400 mb-1">Title</label>
+            <input
+              required
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Fix Navigation Array"
+              className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/[0.08] text-white text-sm focus:outline-none focus:border-[#00F0FF] transition-colors"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-[10px] font-sans font-bold uppercase tracking-wider text-zinc-400 mb-1">Problem Statement</label>
+            <textarea
+              required
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              placeholder="Steps to complete the task..."
+              className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/[0.08] text-white text-sm focus:outline-none focus:border-[#00F0FF] resize-none transition-colors"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-4xl font-extrabold tabular-nums tracking-[-0.04em] text-white">{pct}%</p>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">of target</p>
+              <label className="block text-[10px] font-sans font-bold uppercase tracking-wider text-zinc-400 mb-1">Points</label>
+              <input
+                required
+                type="number"
+                min="1"
+                value={pointsVal}
+                onChange={(e) => setPointsVal(Number(e.target.value))}
+                className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/[0.08] text-white text-sm focus:outline-none focus:border-[#00F0FF]"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-sans font-bold uppercase tracking-wider text-zinc-400 mb-1">Difficulty</label>
+              <select
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/[0.08] text-white text-sm focus:outline-none focus:border-[#00F0FF]"
+              >
+                <option value="EASY">EASY</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="HARD">HARD</option>
+                <option value="EXPERT">EXPERT</option>
+              </select>
             </div>
           </div>
-        </div>
-        <p className="mt-5 font-mono text-sm text-zinc-300">
-          {points.toLocaleString("en-IN")} <span className="text-zinc-600">/ {POINT_TARGET.toLocaleString("en-IN")}</span>
-        </p>
-        {live && (
-          <p className="mt-2 text-xs text-zinc-500">
-            {live.completed} completed · {live.inPlay} in play
-          </p>
-        )}
-        <p className="mt-4 rounded-full border border-[#00F0FF]/20 bg-[#00F0FF]/[0.06] px-3 py-1 text-[11px] font-semibold text-[#7FF7FF]">
-          {(POINT_TARGET - points).toLocaleString("en-IN")} pts to crew victory
-        </p>
+
+          <div className="space-y-2 pt-2 border-t border-white/[0.08]">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={requiresPhoto}
+                onChange={(e) => setRequiresPhoto(e.target.checked)}
+                className="rounded border-white/[0.08] bg-black/50 text-[#00F0FF] focus:ring-0 focus:ring-offset-0"
+              />
+              <span className="text-xs text-zinc-300 flex items-center gap-1.5 font-bold uppercase tracking-wider">
+                <Camera className="w-3.5 h-3.5 text-zinc-500" /> Require Photo Upload
+              </span>
+            </label>
+
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={requiresAnswer}
+                onChange={(e) => setRequiresAnswer(e.target.checked)}
+                className="rounded border-white/[0.08] bg-black/50 text-[#00F0FF] focus:ring-0 focus:ring-offset-0"
+              />
+              <span className="text-xs text-zinc-300 flex items-center gap-1.5 font-bold uppercase tracking-wider">
+                <MessageSquare className="w-3.5 h-3.5 text-zinc-500" /> Require Text Answer
+              </span>
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className={`w-full mt-2 py-3 font-black uppercase tracking-widest text-xs rounded-xl transition-all duration-300 shadow-xl disabled:opacity-50 ${forImposter ? 'bg-[#FF3B5C] text-[#0B0B0F] shadow-[0_0_15px_rgba(255,59,92,0.4)] hover:bg-white' : 'bg-[#00F0FF] text-[#0B0B0F] shadow-[0_0_15px_rgba(0,240,255,0.4)] hover:bg-white'}`}
+          >
+            {submitting ? "Adding..." : "Inject Matrix Task"}
+          </button>
+        </form>
+        
+        {/* Glow behind the panel */}
+        <div className={`absolute -bottom-10 -right-10 w-40 h-40 blur-3xl opacity-20 transition-colors ${forImposter ? 'bg-[#FF3B5C]' : 'bg-[#00F0FF]'} pointer-events-none`} />
       </div>
 
-      <ul className="flex flex-col gap-2.5">
-        {DISCIPLINES.map((d) => {
-          const Icon = d.icon;
-          const p = Math.round((d.done / d.total) * 100);
-          return (
-            <li
-              key={d.key}
-              className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/[0.12] hover:bg-white/[0.035]"
-            >
-              <div className="flex items-center gap-3">
-                <span className="grid h-9 w-9 place-items-center rounded-xl border border-white/[0.06] bg-black/30 text-zinc-400 transition-colors group-hover:text-[#00F0FF]">
-                  <Icon className="h-4 w-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="truncate text-sm font-bold text-white">{d.label}</p>
-                    <p className="shrink-0 font-mono text-xs text-zinc-400">
-                      {d.done}/{d.total} <span className="text-zinc-600">tasks</span>
-                    </p>
+      {/* TASK LIST */}
+      <div className="flex flex-col">
+        <div className="mb-4">
+          <SegmentedTabs 
+            label="Matrix List" 
+            idPrefix="matrix-list" 
+            value={activeTaskTab} 
+            onChange={(v) => setActiveTaskTab(v as "crewmate" | "imposter")}
+            items={taskTabs} 
+          />
+        </div>
+
+        <div className="flex-1 overflow-y-auto pr-2 pb-10 space-y-3">
+          {loading ? (
+            <div className="py-10 text-center font-mono text-xs uppercase tracking-widest text-zinc-600 animate-pulse">Syncing Matrix...</div>
+          ) : filteredTasks.length === 0 ? (
+            <div className="border border-white/[0.04] bg-white/[0.01] rounded-[2.5rem] p-10 text-center">
+              <p className="text-zinc-500 font-mono text-xs uppercase tracking-widest">No matrix objectives found</p>
+            </div>
+          ) : (
+            filteredTasks.map((task) => (
+              <div key={task.id} className="group relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border border-white/[0.04] bg-[#0A0A0E]/80 backdrop-blur-md p-4 rounded-2xl hover:border-white/[0.1] transition-colors">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="text-white font-bold text-base">{task.title}</h4>
+                    <span className="px-2 py-0.5 rounded border border-white/[0.08] text-[10px] uppercase font-bold text-zinc-400 bg-white/[0.02]">
+                      {task.difficulty}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded border text-[10px] font-mono bg-opacity-10 ${task.forImposter ? 'border-[#FF3B5C]/30 text-[#FF3B5C] bg-[#FF3B5C]/10' : 'border-[#00F0FF]/30 text-[#00F0FF] bg-[#00F0FF]/10'}`}>
+                      +{task.points} PTS
+                    </span>
                   </div>
-                  <div className="mt-2 flex items-center gap-3">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
-                      <div className="h-full rounded-full bg-gradient-to-r from-[#00F0FF] to-[#8B5CF6]" style={{ width: `${p}%` }} />
-                    </div>
-                    <span className="w-16 text-right font-mono text-[11px] text-[#7FF7FF]">{d.points.toLocaleString("en-IN")}</span>
+                  <p className="text-sm text-zinc-400 line-clamp-2">{task.description}</p>
+                  
+                  <div className="flex items-center gap-3 mt-3">
+                    {task.requiresPhoto && (
+                      <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-blue-400 tracking-wider">
+                        <Camera className="w-3 h-3" /> Photo Reqd
+                      </span>
+                    )}
+                    {task.requiresAnswer && (
+                      <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-amber-400 tracking-wider">
+                        <MessageSquare className="w-3 h-3" /> Answer Reqd
+                      </span>
+                    )}
                   </div>
                 </div>
+
+                <button
+                  onClick={() => handleDelete(task.id)}
+                  className="p-3 text-zinc-600 hover:text-[#FF3B5C] hover:bg-red-500/10 rounded-xl transition-colors shrink-0"
+                  aria-label="Delete task"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
               </div>
-            </li>
-          );
-        })}
-      </ul>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }
+
 
 function SabotagePanel({
   activeId,
@@ -1265,7 +1448,7 @@ function SabotagePanel({
             <li
               key={s.id}
               className={cn(
-                "flex flex-col rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-0.5",
+                "flex flex-col rounded-[2.5rem] border p-4 transition-all duration-300 hover:-translate-y-0.5",
                 isActive
                   ? "border-[#FF3B5C]/50 bg-[#FF3B5C]/[0.08] shadow-[0_0_40px_-12px_rgba(255,59,92,0.6)]"
                   : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]",
@@ -1308,7 +1491,7 @@ function SabotagePanel({
 
       <div
         className={cn(
-          "relative flex flex-col items-center justify-center overflow-hidden rounded-2xl border p-6 text-center transition-colors duration-500",
+          "relative flex flex-col items-center justify-center overflow-hidden rounded-[2.5rem] border p-6 text-center transition-colors duration-500",
           active ? "border-[#FF3B5C]/40 bg-[#FF3B5C]/[0.06]" : "border-white/[0.06] bg-black/25",
         )}
       >
@@ -1353,7 +1536,7 @@ function SabotagePanel({
             </>
           ) : (
             <>
-              <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-emerald-400/20 bg-emerald-400/10 text-emerald-300">
+              <span className="mx-auto grid h-14 w-14 place-items-center rounded-[2.5rem] border border-emerald-400/20 bg-emerald-400/10 text-emerald-300">
                 <ShieldAlert className="h-6 w-6" />
               </span>
               <p className="mt-4 text-sm font-extrabold text-white">All systems nominal</p>
@@ -1369,19 +1552,40 @@ function SabotagePanel({
 }
 
 function GhostPanel({ ghosts }: { ghosts: Player[] }) {
-  const [revealed, setRevealed] = useState<Set<number>>(() => new Set());
-  const [solved, setSolved] = useState<Set<number>>(() => new Set([0]));
+  const [revealed, setRevealed] = useState<Set<string>>(() => new Set());
+  const [solved, setSolved] = useState<Set<string>>(() => new Set());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const toggle = (set: Set<number>, i: number) => {
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const res = await fetch("/api/game/tasks");
+        const data = await res.json();
+        if(data.success) {
+          // Ghost tasks are Crewmate tasks
+          setTasks(data.tasks.filter((t: {id:string, title:string, description:string, otpHash:string, points:number, forImposter:boolean}) => !t.forImposter));
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTasks();
+  }, []);
+
+  const toggle = (set: Set<string>, id: string) => {
     const next = new Set(set);
-    if (next.has(i)) next.delete(i);
-    else next.add(i);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
     return next;
   };
 
   return (
     <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
-      <div className="rounded-2xl border border-white/[0.06] bg-black/25 p-5">
+      <div className="rounded-[2.5rem] border border-white/[0.06] bg-black/25 p-5 h-fit">
         <div className="flex items-center justify-between">
           <p className="text-sm font-extrabold text-white">In the lounge</p>
           <span className="rounded-full bg-[#8B5CF6]/15 px-2 py-0.5 font-mono text-xs text-[#C4B5FD]">{ghosts.length}</span>
@@ -1399,63 +1603,76 @@ function GhostPanel({ ghosts }: { ghosts: Player[] }) {
         </ul>
       </div>
 
-      <ul className="grid gap-2.5 sm:grid-cols-2">
-        {RIDDLES.map((r, i) => {
-          const isSolved = solved.has(i);
-          const isRevealed = revealed.has(i);
-          return (
-            <li
-              key={i}
-              className={cn(
-                "flex flex-col rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-0.5",
-                isSolved ? "border-emerald-400/25 bg-emerald-400/[0.04]" : "border-white/[0.06] bg-white/[0.02] hover:border-[#8B5CF6]/30",
-              )}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[11px] text-zinc-600">RIDDLE {String(i + 1).padStart(2, "0")}</span>
-                {isSolved && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
-                    <Check className="h-3 w-3" strokeWidth={3} /> Solved
-                  </span>
-                )}
-              </div>
-              <p className="mt-2 flex-1 text-sm font-semibold leading-relaxed text-zinc-200">{r.q}</p>
-              <p
-                className={cn(
-                  "mt-3 rounded-lg border border-dashed px-3 py-2 font-mono text-xs transition-all duration-300",
-                  isRevealed ? "border-[#8B5CF6]/30 text-[#C4B5FD]" : "select-none border-white/[0.06] text-transparent [text-shadow:0_0_8px_rgba(255,255,255,0.5)]",
-                )}
-              >
-                {r.a}
-              </p>
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRevealed((s) => toggle(s, i))}
-                  className={cn("inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] py-2 text-[11px] font-bold text-zinc-300 transition-colors hover:text-white", FOCUS_RING)}
-                >
-                  <KeyRound className="h-3.5 w-3.5" /> {isRevealed ? "Hide" : "Answer"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSolved((s) => toggle(s, i))}
+      <div className="space-y-2.5">
+        {loading ? (
+          <div className="text-center text-xs text-zinc-500 py-10">Syncing Ghost Directives...</div>
+        ) : tasks.length === 0 ? (
+          <div className="text-center text-xs text-zinc-500 py-10 border border-dashed border-white/[0.08] rounded-2xl">
+            No Crewmate objectives found in the Task Matrix.
+          </div>
+        ) : (
+          <ul className="grid gap-2.5 sm:grid-cols-2">
+            {tasks.map((t, i) => {
+              const isSolved = solved.has(t.id);
+              const isRevealed = revealed.has(t.id);
+              return (
+                <li
+                  key={t.id}
                   className={cn(
-                    "inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-bold transition-colors",
-                    isSolved ? "bg-emerald-400/15 text-emerald-300 hover:bg-emerald-400/20" : "bg-[#8B5CF6]/15 text-[#C4B5FD] hover:bg-[#8B5CF6]/25",
-                    FOCUS_RING,
+                    "flex flex-col rounded-[2.5rem] border p-4 transition-all duration-300 hover:-translate-y-0.5",
+                    isSolved ? "border-emerald-400/25 bg-emerald-400/[0.04]" : "border-white/[0.06] bg-white/[0.02] hover:border-[#8B5CF6]/30",
                   )}
                 >
-                  <Check className="h-3.5 w-3.5" /> {isSolved ? "Undo" : "Mark solved"}
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[11px] text-zinc-600">MISSION {String(i + 1).padStart(2, "0")}</span>
+                    {isSolved && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+                        <Check className="h-3 w-3" strokeWidth={3} /> Verified
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-2 flex-1 text-sm font-semibold leading-relaxed text-zinc-200">{t.title}</p>
+                  {t.description && (
+                    <p className="mt-1 text-xs text-zinc-400 font-mono leading-relaxed">{t.description}</p>
+                  )}
+                  <p
+                    className={cn(
+                      "mt-3 rounded-lg border border-dashed px-3 py-2 font-mono text-xs transition-all duration-300",
+                      isRevealed ? "border-[#8B5CF6]/30 text-[#C4B5FD]" : "select-none border-white/[0.06] text-transparent [text-shadow:0_0_8px_rgba(255,255,255,0.5)]",
+                    )}
+                  >
+                    OTP: {t.otpHash?.substring(0, 4) || "NO-OTP"} • {t.points} PTS
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRevealed((s) => toggle(s, t.id))}
+                      className={cn("inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] py-2 text-[11px] font-bold text-zinc-300 transition-colors hover:text-white", FOCUS_RING)}
+                    >
+                      <KeyRound className="h-3.5 w-3.5" /> {isRevealed ? "Hide Details" : "Show Details"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSolved((s) => toggle(s, t.id))}
+                      className={cn(
+                        "inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-[11px] font-bold transition-colors",
+                        isSolved ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400/20" : "border-transparent bg-[#8B5CF6]/15 text-[#C4B5FD] hover:bg-[#8B5CF6]/25 hover:text-white",
+                        FOCUS_RING,
+                      )}
+                    >
+                      {isSolved ? <Undo2 className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
+                      {isSolved ? "Undo" : "Mark Verified"}
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
-
 /* ─────────────────────────────── mechanics ────────────────────────────────── */
 
 function TagVisual() {
@@ -1502,7 +1719,7 @@ function MeetingTimerCard({
     <BentoCard glow="violet" className="p-6 sm:p-7 lg:col-span-2 lg:row-span-2">
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between">
-          <span className="grid h-11 w-11 place-items-center rounded-2xl border border-[#8B5CF6]/25 bg-[#8B5CF6]/10 text-[#C4B5FD]">
+          <span className="grid h-11 w-11 place-items-center rounded-[2.5rem] border border-[#8B5CF6]/25 bg-[#8B5CF6]/10 text-[#C4B5FD]">
             <Megaphone className="h-5 w-5" />
           </span>
           <span
@@ -1594,7 +1811,7 @@ function VictoryCard() {
       <div className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-amber-200">
+            <span className="grid h-11 w-11 place-items-center rounded-[2.5rem] border border-amber-300/20 bg-amber-300/10 text-amber-200">
               <Trophy className="h-5 w-5" />
             </span>
             <h3 className="text-xl font-extrabold tracking-[-0.02em] text-white">Victory conditions</h3>
@@ -1617,7 +1834,7 @@ function VictoryCard() {
           {rules.map((r) => {
             const Icon = r.icon;
             return (
-              <div key={r.title} className="rounded-2xl border border-white/[0.06] bg-black/25 p-4">
+              <div key={r.title} className="rounded-[2.5rem] border border-white/[0.06] bg-black/25 p-4">
                 <Icon className={cn("h-5 w-5", side === "crew" ? "text-[#00F0FF]" : "text-[#FF3B5C]")} />
                 <p className="mt-3 text-sm font-bold text-white">{r.title}</p>
                 <p className="mt-1 text-xs leading-relaxed text-zinc-500">{r.body}</p>
@@ -1885,7 +2102,7 @@ export default function AdminLandingPage() {
             <BentoCard as="article" className="p-6 sm:p-8 lg:col-span-4 lg:row-span-2">
               <div className="flex h-full flex-col">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="grid h-11 w-11 place-items-center rounded-2xl border border-[#B6FF3B]/25 bg-[#B6FF3B]/10 text-[#D4FF7A]">
+                  <span className="grid h-11 w-11 place-items-center rounded-[2.5rem] border border-[#B6FF3B]/25 bg-[#B6FF3B]/10 text-[#D4FF7A]">
                     <Tag className="h-5 w-5" />
                   </span>
                   <span className="rounded-full border border-white/[0.08] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
@@ -1925,7 +2142,7 @@ export default function AdminLandingPage() {
             {/* C — impostors */}
             <BentoCard as="article" glow="red" className="p-6 lg:col-span-2">
               <div className="flex items-center justify-between">
-                <span className="grid h-11 w-11 place-items-center rounded-2xl border border-[#FF3B5C]/25 bg-[#FF3B5C]/10 text-[#FF6B83]">
+                <span className="grid h-11 w-11 place-items-center rounded-[2.5rem] border border-[#FF3B5C]/25 bg-[#FF3B5C]/10 text-[#FF6B83]">
                   <Skull className="h-5 w-5" />
                 </span>
                 <span className="text-4xl font-extrabold tabular-nums tracking-[-0.04em] text-white">
@@ -1951,7 +2168,7 @@ export default function AdminLandingPage() {
             {/* D — ghost lounge */}
             <BentoCard as="article" glow="violet" className="p-6 lg:col-span-2">
               <div className="flex items-center justify-between">
-                <span className="grid h-11 w-11 place-items-center rounded-2xl border border-[#8B5CF6]/25 bg-[#8B5CF6]/10 text-[#C4B5FD]">
+                <span className="grid h-11 w-11 place-items-center rounded-[2.5rem] border border-[#8B5CF6]/25 bg-[#8B5CF6]/10 text-[#C4B5FD]">
                   <Ghost className="h-5 w-5" />
                 </span>
                 <div className="flex -space-x-2">
@@ -1981,7 +2198,7 @@ export default function AdminLandingPage() {
             {/* E — point target */}
             <BentoCard as="article" className="p-6 lg:col-span-2">
               <div className="flex items-center justify-between">
-                <span className="grid h-11 w-11 place-items-center rounded-2xl border border-[#00F0FF]/25 bg-[#00F0FF]/10 text-[#7FF7FF]">
+                <span className="grid h-11 w-11 place-items-center rounded-[2.5rem] border border-[#00F0FF]/25 bg-[#00F0FF]/10 text-[#7FF7FF]">
                   <Target className="h-5 w-5" />
                 </span>
                 <span className="font-mono text-xs text-zinc-500">{Math.round((points / POINT_TARGET) * 100)}%</span>
@@ -2003,7 +2220,7 @@ export default function AdminLandingPage() {
             <BentoCard as="article" glow="red" className="p-6 sm:p-7 lg:col-span-3">
               <div className="flex h-full flex-col gap-5 sm:flex-row sm:items-center">
                 <div className="flex-1">
-                  <span className="grid h-11 w-11 place-items-center rounded-2xl border border-[#FF3B5C]/25 bg-[#FF3B5C]/10 text-[#FF6B83]">
+                  <span className="grid h-11 w-11 place-items-center rounded-[2.5rem] border border-[#FF3B5C]/25 bg-[#FF3B5C]/10 text-[#FF6B83]">
                     <Siren className="h-5 w-5" />
                   </span>
                   <h3 className="mt-5 text-xl font-extrabold tracking-[-0.02em] text-white">Critical sabotage</h3>
@@ -2018,7 +2235,7 @@ export default function AdminLandingPage() {
                     scrollToSection("console");
                   }}
                   className={cn(
-                    "group/s flex shrink-0 flex-col items-center justify-center rounded-2xl border px-6 py-5 transition-all duration-300",
+                    "group/s flex shrink-0 flex-col items-center justify-center rounded-[2.5rem] border px-6 py-5 transition-all duration-300",
                     activeSabotage && sabotage.remaining > 0
                       ? "border-[#FF3B5C]/50 bg-[#FF3B5C]/10"
                       : "border-white/[0.08] bg-black/25 hover:border-[#FF3B5C]/40 hover:bg-[#FF3B5C]/[0.06]",
@@ -2056,7 +2273,7 @@ export default function AdminLandingPage() {
               return (
                 <BentoCard as="li" key={step.title} glow={i % 2 ? "violet" : "cyan"} className="p-6">
                   <div className="flex items-center justify-between">
-                    <span className="relative grid h-11 w-11 place-items-center rounded-2xl border border-white/[0.1] bg-[#0B0B0F] text-[#00F0FF]">
+                    <span className="relative grid h-11 w-11 place-items-center rounded-[2.5rem] border border-white/[0.1] bg-[#0B0B0F] text-[#00F0FF]">
                       <Icon className="h-5 w-5" />
                     </span>
                     <span className="font-mono text-4xl font-bold text-white/[0.06]">0{i + 1}</span>

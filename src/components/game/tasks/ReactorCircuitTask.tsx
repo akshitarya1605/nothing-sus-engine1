@@ -239,7 +239,7 @@ export function ReactorCircuitTask({ onSuccess, onCancel }: ReactorCircuitTaskPr
   const powered = calculateFlow(cells);
 
   return (
-    <div className="bg-[#080d16] text-[#e7eef8] rounded-2xl border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full">
+    <div className="bg-[#080d16] text-[#e7eef8] rounded-[2.5rem] border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#29374a] pb-3">
         <div>
@@ -264,7 +264,7 @@ export function ReactorCircuitTask({ onSuccess, onCancel }: ReactorCircuitTaskPr
       </div>
 
       <p className="text-xs text-[#8798b0] leading-relaxed">
-        Rotate conduit tiles to connect power from the battery (<span className="text-yellow-400 font-bold">⚡</span>) to the reactor target (<span className="text-cyan-400 font-bold">◎</span>). Complete 3 circuits.
+        Rotate conduit tiles to connect power from the battery (<span className="text-yellow-400 font-bold">⚡</span>) to the reactor target (<span className="text-[#00F0FF] font-bold">◎</span>). Complete 3 circuits.
       </p>
 
       {/* Grid */}
@@ -336,7 +336,7 @@ export function ReactorCircuitTask({ onSuccess, onCancel }: ReactorCircuitTaskPr
               className={`text-[10px] text-center p-1.5 rounded border truncate ${
                 i < solvedNodes
                   ? "bg-emerald-950/70 border-emerald-500/50 text-emerald-300 font-bold"
-                  : "bg-zinc-900 border-zinc-800 text-zinc-500"
+                  : "bg-black/50 border-white/[0.08] text-zinc-500"
               }`}
             >
               {name}
@@ -358,7 +358,7 @@ export function ReactorCircuitTask({ onSuccess, onCancel }: ReactorCircuitTaskPr
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-700 transition-colors"
+          className="text-xs px-4 py-2 rounded-lg bg-black/50 hover:bg-white/[0.04] text-zinc-400 border border-white/[0.08] transition-colors"
         >
           Exit Console
         </button>

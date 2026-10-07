@@ -48,7 +48,7 @@ export function WiresTask({ onSuccess, onCancel }: WiresTaskProps) {
   const connectedCount = Object.keys(connections).length;
 
   return (
-    <div className="bg-[#080d16] text-[#e7eef8] rounded-2xl border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-sm w-full select-none">
+    <div className="bg-[#080d16] text-[#e7eef8] rounded-[2.5rem] border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-sm w-full select-none">
       <div className="border-b border-[#29374a] pb-3 flex items-center justify-between">
         <div>
           <span className="text-[10px] tracking-widest uppercase text-yellow-400 font-bold">
@@ -83,7 +83,7 @@ export function WiresTask({ onSuccess, onCancel }: WiresTaskProps) {
                     ? "opacity-50 border-emerald-500/60 bg-emerald-950/20 text-emerald-300"
                     : isSelected
                     ? `border-white bg-[#1b293c] shadow-[0_0_12px_rgba(255,255,255,0.4)]`
-                    : "border-zinc-800 bg-[#0c1522] hover:border-zinc-600 text-zinc-300"
+                    : "border-white/[0.08] bg-[#0c1522] hover:border-zinc-600 text-zinc-300"
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -93,7 +93,7 @@ export function WiresTask({ onSuccess, onCancel }: WiresTaskProps) {
                 {isConnected ? (
                   <span className="text-emerald-400 text-xs font-bold">✓</span>
                 ) : isSelected ? (
-                  <span className="text-cyan-400 text-xs animate-pulse">●</span>
+                  <span className="text-[#00F0FF] text-xs animate-pulse">●</span>
                 ) : null}
               </button>
             );
@@ -103,7 +103,7 @@ export function WiresTask({ onSuccess, onCancel }: WiresTaskProps) {
         {/* Center Connection Indicator */}
         <div className="text-xs font-bold font-mono text-center px-1 text-zinc-500">
           {selectedLeft ? (
-            <span className="text-cyan-400 animate-pulse">Connect →</span>
+            <span className="text-[#00F0FF] animate-pulse">Connect →</span>
           ) : (
             <span>⚡</span>
           )}
@@ -124,8 +124,8 @@ export function WiresTask({ onSuccess, onCancel }: WiresTaskProps) {
                   isConnected
                     ? "opacity-50 border-emerald-500/60 bg-emerald-950/20 text-emerald-300"
                     : isFlashErr
-                    ? "border-red-500 bg-red-950/60 text-red-300 animate-shake"
-                    : "border-zinc-800 bg-[#0c1522] hover:border-zinc-600 text-zinc-300"
+                    ? "border-red-500 bg-[#FF3B5C]/10/60 text-red-300 animate-shake"
+                    : "border-white/[0.08] bg-[#0c1522] hover:border-zinc-600 text-zinc-300"
                 }`}
               >
                 {isConnected ? (
@@ -148,7 +148,7 @@ export function WiresTask({ onSuccess, onCancel }: WiresTaskProps) {
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs px-3.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-700 transition-colors"
+          className="text-xs px-3.5 py-1.5 rounded-lg bg-black/50 hover:bg-white/[0.04] text-zinc-400 border border-white/[0.08] transition-colors"
         >
           Exit
         </button>

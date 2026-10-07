@@ -106,11 +106,11 @@ export function ThrusterMatrixTask({ onSuccess, onCancel }: ThrusterMatrixTaskPr
   const isCentered = distFromCenter <= 12;
 
   return (
-    <div className="bg-[#080d16] text-[#e7eef8] rounded-2xl border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
+    <div className="bg-[#080d16] text-[#e7eef8] rounded-[2.5rem] border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#29374a] pb-3">
         <div>
-          <span className="text-[10px] tracking-widest uppercase text-cyan-400 font-bold">
+          <span className="text-[10px] tracking-widest uppercase text-[#00F0FF] font-bold">
             PROPULSION CONTROL // HARD TASK
           </span>
           <h2 className="text-lg font-black uppercase text-white tracking-tight">
@@ -124,7 +124,7 @@ export function ThrusterMatrixTask({ onSuccess, onCancel }: ThrusterMatrixTaskPr
           >
             {sound ? "🔊" : "🔇"}
           </button>
-          <span className="text-xs px-2.5 py-1 rounded bg-[#1b293c] border border-[#29374a] text-cyan-400 font-bold">
+          <span className="text-xs px-2.5 py-1 rounded bg-[#1b293c] border border-[#29374a] text-[#00F0FF] font-bold">
             DRIFT LOCK
           </span>
         </div>
@@ -135,8 +135,8 @@ export function ThrusterMatrixTask({ onSuccess, onCancel }: ThrusterMatrixTaskPr
       </p>
 
       {/* Gyroscopic Reticle Radar */}
-      <div className="bg-[#070e18] p-4 rounded-2xl border border-[#29374a] flex flex-col items-center space-y-4">
-        <div className="relative w-64 h-64 rounded-full border-2 border-cyan-900 bg-zinc-950 flex items-center justify-center overflow-hidden shadow-inner">
+      <div className="bg-[#070e18] p-4 rounded-[2.5rem] border border-[#29374a] flex flex-col items-center space-y-4">
+        <div className="relative w-64 h-64 rounded-full border-2 border-cyan-900 bg-[#12121A]/60 backdrop-blur-[30px] flex items-center justify-center overflow-hidden shadow-inner">
           {/* Radar Circles */}
           <div className="absolute w-48 h-48 rounded-full border border-cyan-950/60" />
           <div className="absolute w-32 h-32 rounded-full border border-cyan-900/60" />
@@ -168,9 +168,9 @@ export function ThrusterMatrixTask({ onSuccess, onCancel }: ThrusterMatrixTaskPr
         <div className="w-full space-y-1">
           <div className="flex justify-between text-[10px] text-zinc-400">
             <span>HOLD STABILIZATION</span>
-            <span className="font-bold text-cyan-400">{Math.round(stableHold)}%</span>
+            <span className="font-bold text-[#00F0FF]">{Math.round(stableHold)}%</span>
           </div>
-          <div className="w-full h-2.5 rounded-full bg-zinc-900 overflow-hidden border border-zinc-800">
+          <div className="w-full h-2.5 rounded-full bg-black/50 overflow-hidden border border-white/[0.08]">
             <div
               className={`h-full transition-all duration-75 ${
                 stableHold > 70 ? "bg-emerald-400" : "bg-cyan-400"
@@ -186,7 +186,7 @@ export function ThrusterMatrixTask({ onSuccess, onCancel }: ThrusterMatrixTaskPr
           <button
             type="button"
             onClick={() => fireThruster("UP")}
-            className="py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold text-sm active:scale-95"
+            className="py-3 rounded-xl bg-black/50 hover:bg-white/[0.04] border border-white/[0.08] text-white font-bold text-sm active:scale-95"
           >
             ▲
           </button>
@@ -195,21 +195,21 @@ export function ThrusterMatrixTask({ onSuccess, onCancel }: ThrusterMatrixTaskPr
           <button
             type="button"
             onClick={() => fireThruster("LEFT")}
-            className="py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold text-sm active:scale-95"
+            className="py-3 rounded-xl bg-black/50 hover:bg-white/[0.04] border border-white/[0.08] text-white font-bold text-sm active:scale-95"
           >
             ◀
           </button>
           <button
             type="button"
             onClick={() => fireThruster("DOWN")}
-            className="py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold text-sm active:scale-95"
+            className="py-3 rounded-xl bg-black/50 hover:bg-white/[0.04] border border-white/[0.08] text-white font-bold text-sm active:scale-95"
           >
             ▼
           </button>
           <button
             type="button"
             onClick={() => fireThruster("RIGHT")}
-            className="py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white font-bold text-sm active:scale-95"
+            className="py-3 rounded-xl bg-black/50 hover:bg-white/[0.04] border border-white/[0.08] text-white font-bold text-sm active:scale-95"
           >
             ▶
           </button>
@@ -224,7 +224,7 @@ export function ThrusterMatrixTask({ onSuccess, onCancel }: ThrusterMatrixTaskPr
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-700 transition-colors"
+          className="text-xs px-4 py-2 rounded-lg bg-black/50 hover:bg-white/[0.04] text-zinc-400 border border-white/[0.08] transition-colors"
         >
           Exit Console
         </button>

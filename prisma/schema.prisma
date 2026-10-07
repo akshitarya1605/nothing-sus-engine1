@@ -232,6 +232,8 @@ model Location {
   floor       String?
   building    String?
   description String?
+  forImposter Boolean @default(false)
+
   active      Boolean @default(true)
 
   /// opaque token used in the QR payload (/location/scan/<qrToken>) —
@@ -459,6 +461,8 @@ model Task {
 
   title       String
   description String
+  forImposter Boolean @default(false)
+
 
   locationId String?
   location   Location? @relation(fields: [locationId], references: [id])
@@ -466,6 +470,9 @@ model Task {
   difficulty       TaskDifficulty
   estimatedMinutes Int
   points           Int
+  
+  requiresPhoto    Boolean @default(false)
+  requiresAnswer   Boolean @default(false)
 
   status TaskStatus @default(LOCKED)
 

@@ -75,7 +75,7 @@ export function VoltageRegulatorTask({ onSuccess, onCancel }: VoltageRegulatorTa
   };
 
   return (
-    <div className="bg-[#080d16] text-[#e7eef8] rounded-2xl border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
+    <div className="bg-[#080d16] text-[#e7eef8] rounded-[2.5rem] border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#29374a] pb-3">
         <div>
@@ -104,8 +104,8 @@ export function VoltageRegulatorTask({ onSuccess, onCancel }: VoltageRegulatorTa
       </p>
 
       {/* Voltage Meter Display */}
-      <div className="bg-[#070e18] p-5 rounded-2xl border border-[#29374a] space-y-4">
-        <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+      <div className="bg-[#070e18] p-5 rounded-[2.5rem] border border-[#29374a] space-y-4">
+        <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
           <div>
             <div className="text-[10px] text-zinc-400">BUS VOLTAGE</div>
             <div className={`text-3xl font-black ${isBalanced ? "text-emerald-400 animate-pulse" : "text-amber-400"}`}>
@@ -131,12 +131,12 @@ export function VoltageRegulatorTask({ onSuccess, onCancel }: VoltageRegulatorTa
               className={`p-3 rounded-xl border flex flex-col items-center justify-between gap-2 transition-all active:scale-95 ${
                 on
                   ? "border-yellow-400 bg-yellow-950/30 text-yellow-300 shadow-[0_0_12px_rgba(250,204,21,0.2)]"
-                  : "border-zinc-800 bg-zinc-950 text-zinc-500"
+                  : "border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px] text-zinc-500"
               }`}
             >
               <span className="text-[10px] font-bold">SHUNT #{idx + 1}</span>
               <span className="text-xl">{on ? "⚡" : "○"}</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${on ? "bg-yellow-400 text-black" : "bg-zinc-800 text-zinc-400"}`}>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${on ? "bg-yellow-400 text-black" : "bg-white/[0.04] text-zinc-400"}`}>
                 {on ? "CLOSED" : "OPEN"}
               </span>
             </button>
@@ -151,7 +151,7 @@ export function VoltageRegulatorTask({ onSuccess, onCancel }: VoltageRegulatorTa
           className={`w-full py-3.5 rounded-xl font-black text-xs uppercase tracking-wider shadow-lg active:scale-98 transition-all ${
             isBalanced
               ? "bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_20px_rgba(52,211,153,0.3)]"
-              : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+              : "bg-white/[0.04] text-zinc-400 hover:bg-white/[0.08]"
           }`}
         >
           {isBalanced ? "COMMIT VOLTAGE STABILIZATION →" : "VOLTAGE OUT OF TOLERANCE"}
@@ -166,7 +166,7 @@ export function VoltageRegulatorTask({ onSuccess, onCancel }: VoltageRegulatorTa
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-700 transition-colors"
+          className="text-xs px-4 py-2 rounded-lg bg-black/50 hover:bg-white/[0.04] text-zinc-400 border border-white/[0.08] transition-colors"
         >
           Exit Console
         </button>

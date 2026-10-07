@@ -350,9 +350,9 @@ export default function PlayerGameConsolePage() {
 
       {/* KILL SLASH ANIMATION OVERLAY */}
       {showKillAnimation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-red-950/90 pointer-events-none animate-in fade-in zoom-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#FF3B5C]/10/90 pointer-events-none animate-in fade-in zoom-in duration-150">
           <div className="relative text-center">
-            <div className="text-6xl sm:text-8xl font-black text-red-500 tracking-tighter drop-shadow-[0_0_50px_rgba(239,68,68,1)]">
+            <div className="text-6xl sm:text-8xl font-black text-[#FF3B5C] tracking-tighter drop-shadow-[0_0_50px_rgba(239,68,68,1)]">
               KILL CONFIRMED
             </div>
             <div className="w-full h-1 bg-white shadow-[0_0_20px_white] transform -rotate-12 mt-4" />
@@ -362,7 +362,7 @@ export default function PlayerGameConsolePage() {
 
       <main className="flex-1 max-w-md w-full mx-auto p-4 sm:p-6 space-y-5">
         {/* Header HUD */}
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4 sm:p-5 flex items-center justify-between shadow-xl">
+        <div className="rounded-[2.5rem] border border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px] p-4 sm:p-5 flex items-center justify-between shadow-xl">
           <div className="flex items-center gap-3">
             <span className="font-mono text-lg sm:text-xl font-black text-yellow-400 bg-yellow-950/40 border border-yellow-500/30 px-2.5 py-1 rounded-lg">
               #{displayBadge}
@@ -372,9 +372,9 @@ export default function PlayerGameConsolePage() {
                 {state?.identity.name}
               </div>
               <div className="text-[10px] font-mono text-zinc-400 flex items-center gap-1.5">
-                <span>ROOM: <span className="text-red-400 font-bold">{state?.game.roomCode || "ARENA"}</span></span>
+                <span>ROOM: <span className="text-[#FF3B5C] font-bold">{state?.game.roomCode || "ARENA"}</span></span>
                 {state?.identity.profession && (
-                  <span className="px-1.5 py-0.2 rounded bg-cyan-950/70 text-cyan-300 border border-cyan-500/40 text-[9px] font-bold">
+                  <span className="px-1.5 py-0.2 rounded bg-[#00F0FF]/10 text-[#00F0FF] border border-[#00F0FF]/30 text-[9px] font-bold">
                     {state.identity.profession}
                   </span>
                 )}
@@ -386,10 +386,10 @@ export default function PlayerGameConsolePage() {
             <span
               className={`text-[10px] font-mono font-bold tracking-wider px-2 py-0.5 rounded border block ${
                 isEliminated
-                  ? "bg-red-950/80 text-red-400 border-red-500/40"
+                  ? "bg-[#FF3B5C]/10 text-[#FF3B5C] border-[#FF3B5C]/30"
                   : isLobby
-                  ? "bg-zinc-900 text-zinc-400 border-zinc-800"
-                  : "bg-zinc-900 text-zinc-300 border-zinc-700"
+                  ? "bg-black/50 text-zinc-400 border-white/[0.08]"
+                  : "bg-black/50 text-zinc-300 border-white/[0.08]"
               }`}
             >
               {isEliminated
@@ -406,13 +406,13 @@ export default function PlayerGameConsolePage() {
 
         {/* ELIMINATED NOTICE OVERLAY BANNER */}
         {isEliminated && !isLobby && (
-          <div className="p-4 rounded-2xl bg-red-950/40 border border-red-500/50 text-center space-y-1.5 shadow-xl">
+          <div className="p-4 rounded-2xl bg-[#FF3B5C]/5 border border-[#FF3B5C]/30 text-center space-y-1.5 shadow-xl">
             <div className="text-2xl">💀</div>
-            <div className="font-mono text-xs font-black text-red-400 uppercase tracking-widest">
+            <div className="font-mono text-xs font-black text-[#FF3B5C] uppercase tracking-widest">
               YOU WERE ELIMINATED
             </div>
             <p className="text-[11px] font-mono text-zinc-400 leading-relaxed">
-              You are now in Ghost mode. You cannot call emergency meetings, speak in chat, or cast votes.
+              You are now in Ghost mode. You cannot call emergency meetings, speak in chat, or cast votes. You can still complete tasks, but you will not earn individual points.
             </p>
           </div>
         )}
@@ -422,7 +422,7 @@ export default function PlayerGameConsolePage() {
             className={`p-3 rounded-xl border text-xs font-mono ${
               actionMsg.kind === "ok"
                 ? "bg-emerald-950/80 border-emerald-500/40 text-emerald-200"
-                : "bg-red-950/80 border-red-500/40 text-red-200"
+                : "bg-[#FF3B5C]/10 border-[#FF3B5C]/30 text-red-200"
             }`}
           >
             {actionMsg.text}
@@ -433,12 +433,12 @@ export default function PlayerGameConsolePage() {
         {/* ROLE REVEAL CONFIDENTIAL MODAL                                */}
         {/* ------------------------------------------------------------- */}
         {showRoleReveal && state?.ownRole && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-md animate-in fade-in zoom-in duration-300">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-[40px] animate-in fade-in zoom-in duration-300">
             <div
-              className={`w-full max-w-sm rounded-3xl border-2 p-8 text-center space-y-6 shadow-2xl ${
+              className={`w-full max-w-sm rounded-[2.5rem] border border-white/[0.1] p-8 text-center space-y-6 shadow-2xl ${
                 state.ownRole === "IMPOSTER"
-                  ? "border-red-500 bg-zinc-950 shadow-red-950/80"
-                  : "border-cyan-500 bg-zinc-950 shadow-cyan-950/80"
+                  ? "border-red-500 bg-[#12121A]/60 backdrop-blur-[30px] shadow-[0_0_100px_rgba(255,59,92,0.4)]"
+                  : "border-cyan-500 bg-[#12121A]/60 backdrop-blur-[30px] shadow-[0_0_100px_rgba(0,240,255,0.4)]"
               }`}
             >
               <span className="text-[10px] font-mono tracking-widest uppercase text-zinc-400 block">
@@ -451,7 +451,7 @@ export default function PlayerGameConsolePage() {
                 </div>
                 <div
                   className={`font-mono text-4xl sm:text-5xl font-black tracking-widest ${
-                    state.ownRole === "IMPOSTER" ? "text-red-500 drop-shadow-[0_0_20px_rgba(239,68,68,0.7)]" : "text-cyan-400 drop-shadow-[0_0_20px_rgba(6,182,212,0.7)]"
+                    state.ownRole === "IMPOSTER" ? "text-[#FF3B5C] drop-shadow-[0_0_20px_rgba(239,68,68,0.7)]" : "text-[#00F0FF] drop-shadow-[0_0_20px_rgba(6,182,212,0.7)]"
                   }`}
                 >
                   {state.ownRole}
@@ -468,8 +468,8 @@ export default function PlayerGameConsolePage() {
                 onClick={() => setShowRoleReveal(false)}
                 className={`w-full py-3 rounded-xl font-mono text-xs font-black uppercase tracking-wider text-white shadow-xl transition-all ${
                   state.ownRole === "IMPOSTER"
-                    ? "bg-red-600 hover:bg-red-500 shadow-red-900/50"
-                    : "bg-cyan-600 hover:bg-cyan-500 shadow-cyan-900/50"
+                    ? "bg-[#FF3B5C] hover:bg-white text-[#0B0B0F] shadow-red-900/50"
+                    : "bg-[#00F0FF] hover:bg-white text-[#0B0B0F] shadow-cyan-900/50"
                 }`}
               >
                 Enter Arena Console →
@@ -482,8 +482,8 @@ export default function PlayerGameConsolePage() {
         {/* STATE 1: WAITING LOBBY                                        */}
         {/* ------------------------------------------------------------- */}
         {isLobby && (
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 sm:p-8 space-y-6 text-center shadow-2xl">
-            <span className="text-[10px] font-mono tracking-widest uppercase text-zinc-400 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded inline-block">
+          <div className="rounded-[2.5rem] border border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px] p-6 sm:p-8 space-y-6 text-center shadow-2xl">
+            <span className="text-[10px] font-mono tracking-widest uppercase text-zinc-400 bg-black/50 border border-white/[0.08] px-3 py-1 rounded inline-block">
               WAITING LOBBY
             </span>
 
@@ -491,12 +491,12 @@ export default function PlayerGameConsolePage() {
               <div className="text-xs font-mono text-zinc-400 uppercase tracking-wider">
                 ROOM CODE
               </div>
-              <div className="font-mono text-5xl font-black text-red-500 tracking-widest mt-1">
+              <div className="font-mono text-5xl font-black text-[#FF3B5C] tracking-widest mt-1">
                 {state?.game.roomCode || "ACTIVE"}
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-2 text-xs font-mono">
+            <div className="p-4 rounded-xl bg-black/50/80 border border-white/[0.08] space-y-2 text-xs font-mono">
               <div className="flex items-center justify-center gap-2 text-emerald-400 font-bold">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
                 YOU ARE CONNECTED
@@ -513,7 +513,7 @@ export default function PlayerGameConsolePage() {
               </p>
             </div>
 
-            <div className="pt-4 border-t border-zinc-800/80">
+            <div className="pt-4 border-t border-white/[0.08]/80">
               <Link
                 href="/player"
                 className="text-xs font-mono text-zinc-500 hover:text-zinc-300 transition-colors"
@@ -530,7 +530,7 @@ export default function PlayerGameConsolePage() {
         {!isLobby && !isMeeting && !isVoting && !isFinished && (
           <div className="space-y-5">
             {/* Objective Directive Card */}
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 space-y-2 shadow-xl">
+            <div className="rounded-[2.5rem] border border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px] p-5 space-y-2 shadow-xl">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono tracking-widest uppercase text-zinc-500">
                   MISSION DIRECTIVE
@@ -555,8 +555,8 @@ export default function PlayerGameConsolePage() {
 
             {/* PARTNER IMPOSTORS CARD (If Impostor) */}
             {state?.ownRole === "IMPOSTER" && state.partnerImpostors && state.partnerImpostors.length > 0 && (
-              <div className="rounded-2xl border border-red-500/40 bg-zinc-950 p-4 space-y-2.5 shadow-xl">
-                <span className="text-[10px] font-mono tracking-widest uppercase text-red-400 font-bold flex items-center gap-1.5">
+              <div className="rounded-[2.5rem] border border-[#FF3B5C]/30 bg-[#12121A]/60 backdrop-blur-[30px] p-4 space-y-2.5 shadow-xl">
+                <span className="text-[10px] font-mono tracking-widest uppercase text-[#FF3B5C] font-bold flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                   PARTNER IMPOSTOR(S)
                 </span>
@@ -566,14 +566,14 @@ export default function PlayerGameConsolePage() {
                     return (
                       <div
                         key={p.id}
-                        className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-between text-xs font-mono"
+                        className="p-2.5 rounded-xl bg-black/50 border border-white/[0.08] flex items-center justify-between text-xs font-mono"
                       >
                         <span className="text-white font-bold">#{b} {p.name}</span>
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                             p.status === "ALIVE"
-                              ? "bg-red-950 text-red-300 border border-red-500/30"
-                              : "bg-zinc-800 text-zinc-500 line-through"
+                              ? "bg-[#FF3B5C]/10 text-red-300 border border-[#FF3B5C]/30"
+                              : "bg-white/[0.04] text-zinc-500 line-through"
                           }`}
                         >
                           {p.status}
@@ -587,7 +587,7 @@ export default function PlayerGameConsolePage() {
 
             {/* DISCREET IMPOSTOR ACTION CARD */}
             {state?.ownRole === "IMPOSTER" && !isEliminated && (
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 space-y-3.5 shadow-xl">
+              <div className="rounded-[2.5rem] border border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px] p-5 space-y-3.5 shadow-xl">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-mono font-bold uppercase text-zinc-300 tracking-wider">
                     PLAYER ACTION
@@ -613,8 +613,8 @@ export default function PlayerGameConsolePage() {
                             onClick={() => setTargetBadgeInput(b)}
                             className={`px-2 py-1 rounded-lg border text-[11px] font-mono transition-colors ${
                               targetBadgeInput === b
-                                ? "bg-red-600 border-red-400 text-white font-bold"
-                                : "bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700"
+                                ? "bg-[#FF3B5C] border-[#FF3B5C] text-[#0B0B0F] font-black"
+                                : "bg-black/50 border-white/[0.08] text-zinc-300 hover:border-white/[0.08]"
                             }`}
                           >
                             #{b} {p.name}
@@ -637,14 +637,14 @@ export default function PlayerGameConsolePage() {
                       onChange={(e) => setTargetBadgeInput(e.target.value.toUpperCase())}
                       disabled={cooldownRemaining > 0 || actionBusy}
                       placeholder="e.g. K7Q4"
-                      className="w-full px-3 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white font-mono text-sm uppercase tracking-widest focus:outline-none focus:border-zinc-500"
+                      className="w-full px-3 py-2.5 rounded-xl bg-black/50 border border-white/[0.08] text-white font-mono text-sm uppercase tracking-widest focus:outline-none focus:border-zinc-500"
                     />
                   </div>
 
                   <button
                     onClick={handleEliminateByBadge}
                     disabled={cooldownRemaining > 0 || !targetBadgeInput.trim() || actionBusy}
-                    className="w-full py-2.5 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 disabled:opacity-40 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all"
+                    className="w-full py-2.5 px-4 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] disabled:opacity-40 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all"
                   >
                     {cooldownRemaining > 0 ? `Action available in ${cooldownRemaining}s` : "SUBMIT ACTION"}
                   </button>
@@ -653,8 +653,8 @@ export default function PlayerGameConsolePage() {
             )}
 
             {/* TASK DIRECTORY & INTERACTIVE MINI-GAMES */}
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 space-y-4 shadow-xl">
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+            <div className="rounded-[2.5rem] border border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px] p-5 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
                 <div>
                   <h3 className="text-xs font-mono font-bold uppercase text-white">
                     Assigned Tasks ({state?.ownProgress.completed} / {state?.ownTasks.length})
@@ -676,8 +676,8 @@ export default function PlayerGameConsolePage() {
                       key={t.taskId}
                       className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs transition-colors ${
                         isCompleted
-                          ? "bg-zinc-900/40 border-zinc-850 opacity-60"
-                          : "bg-zinc-900 border-zinc-800"
+                          ? "bg-black/50/40 border-zinc-850 opacity-60"
+                          : "bg-black/50 border-white/[0.08]"
                       }`}
                     >
                       <div className="pr-2">
@@ -697,7 +697,7 @@ export default function PlayerGameConsolePage() {
                         <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0">
                           <button
                             onClick={() => setActivePlayTask(t)}
-                            className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-[11px] font-bold uppercase transition-colors"
+                            className="px-3 py-1.5 rounded-lg bg-[#00F0FF] hover:bg-white text-[#0B0B0F] text-white font-mono text-[11px] font-bold uppercase transition-colors"
                           >
                             Play Mini-Game
                           </button>
@@ -706,7 +706,7 @@ export default function PlayerGameConsolePage() {
                               setOtpTaskId(t.taskId);
                               setOtpValue("");
                             }}
-                            className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono text-[11px] font-bold uppercase transition-colors"
+                            className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 font-mono text-[11px] font-bold uppercase transition-colors"
                           >
                             OTP
                           </button>
@@ -723,7 +723,7 @@ export default function PlayerGameConsolePage() {
               <button
                 onClick={handleCallMeeting}
                 disabled={actionBusy}
-                className="w-full py-3 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-300 font-mono text-xs font-bold uppercase tracking-wider transition-all"
+                className="w-full py-3 px-4 rounded-xl bg-black/50 hover:bg-zinc-850 border border-white/[0.08] text-zinc-300 font-mono text-xs font-bold uppercase tracking-wider transition-all"
               >
                 Call Emergency Meeting
               </button>
@@ -735,9 +735,9 @@ export default function PlayerGameConsolePage() {
         {/* STATE 3: EMERGENCY MEETING & VOTING & CHAT                     */}
         {/* ------------------------------------------------------------- */}
         {(isMeeting || isVoting) && (
-          <div className="rounded-2xl border border-red-500/50 bg-zinc-950 p-5 sm:p-6 space-y-5 shadow-2xl text-center">
-            <div className="inline-block p-2.5 rounded-full bg-red-950 border border-red-500 animate-pulse">
-              <span className="font-mono text-xs font-black uppercase text-red-400">
+          <div className="rounded-[2.5rem] border border-[#FF3B5C]/30 bg-[#12121A]/60 backdrop-blur-[30px] p-5 sm:p-6 space-y-5 shadow-2xl text-center">
+            <div className="inline-block p-2.5 rounded-full bg-[#FF3B5C]/10 border border-red-500 animate-pulse">
+              <span className="font-mono text-xs font-black uppercase text-[#FF3B5C]">
                 🚨 EMERGENCY ALARM ACTIVE
               </span>
             </div>
@@ -771,7 +771,7 @@ export default function PlayerGameConsolePage() {
 
             {/* PUBLIC LIVE VOTES FEED ("sabke votes visible honge") */}
             {state?.activeMeeting?.votes && state.activeMeeting.votes.length > 0 && (
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-2 text-left">
+              <div className="rounded-[2.5rem] border border-white/[0.08] bg-black/50/60 p-4 space-y-2 text-left">
                 <div className="text-[11px] font-mono font-bold uppercase text-zinc-400 flex items-center justify-between">
                   <span>LIVE BALLOT FEED ({state.activeMeeting.votes.length} Votes Cast)</span>
                   <span className="text-emerald-400 text-[9px] animate-pulse">TRANSPARENT</span>
@@ -780,7 +780,7 @@ export default function PlayerGameConsolePage() {
                   {state.activeMeeting.votes.map((v) => (
                     <div
                       key={v.id}
-                      className="p-1.5 rounded-lg bg-zinc-950/80 border border-zinc-800 flex items-center justify-between"
+                      className="p-1.5 rounded-lg bg-[#12121A]/60 backdrop-blur-[30px]/80 border border-white/[0.08] flex items-center justify-between"
                     >
                       <span className="text-white font-bold">
                         {v.voterBadge ? `#${v.voterBadge}` : ""} {v.voterName}
@@ -789,8 +789,8 @@ export default function PlayerGameConsolePage() {
                       <span
                         className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
                           v.isSkip
-                            ? "bg-zinc-800 text-zinc-400"
-                            : "bg-red-950 text-red-300 border border-red-500/30"
+                            ? "bg-white/[0.04] text-zinc-400"
+                            : "bg-[#FF3B5C]/10 text-red-300 border border-[#FF3B5C]/30"
                         }`}
                       >
                         {v.isSkip ? "SKIPPED" : `${v.targetBadge ? `#${v.targetBadge}` : ""} ${v.targetName}`}
@@ -822,8 +822,8 @@ export default function PlayerGameConsolePage() {
                           disabled={actionBusy || Boolean(votedParticipantId)}
                           className={`p-2.5 rounded-xl border text-xs font-mono flex items-center justify-between transition-colors ${
                             hasVotedThis
-                              ? "bg-red-950/80 border-red-500 text-white font-bold"
-                              : "bg-zinc-900 border-zinc-800 text-zinc-200 hover:border-red-500/50"
+                              ? "bg-[#FF3B5C]/10 border-red-500 text-white font-bold"
+                              : "bg-black/50 border-white/[0.08] text-zinc-200 hover:border-[#FF3B5C]/30"
                           }`}
                         >
                           <span>#{pBadge} {p.name}</span>
@@ -838,8 +838,8 @@ export default function PlayerGameConsolePage() {
                   disabled={actionBusy || Boolean(votedParticipantId)}
                   className={`w-full py-2.5 rounded-xl border font-mono text-xs uppercase tracking-wider transition-colors ${
                     votedParticipantId === "SKIP"
-                      ? "bg-zinc-800 border-zinc-500 text-white font-bold"
-                      : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white"
+                      ? "bg-white/[0.04] border-zinc-500 text-white font-bold"
+                      : "bg-black/50 border-white/[0.08] text-zinc-400 hover:text-white"
                   }`}
                 >
                   {votedParticipantId === "SKIP" ? "Vote Cast: Skipped" : "Skip Vote"}
@@ -853,7 +853,7 @@ export default function PlayerGameConsolePage() {
         {/* STATE 4: GAME OVER (EXACTLY ONE WINNER SPOTLIGHT)             */}
         {/* ------------------------------------------------------------- */}
         {isFinished && (
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 sm:p-8 space-y-6 text-center shadow-2xl">
+          <div className="rounded-[2.5rem] border border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px] p-6 sm:p-8 space-y-6 text-center shadow-2xl">
             <span className="text-[10px] font-mono tracking-widest uppercase text-yellow-400 bg-yellow-950/60 border border-yellow-500/30 px-3 py-1 rounded inline-block">
               MATCH CONCLUDED
             </span>
@@ -874,7 +874,7 @@ export default function PlayerGameConsolePage() {
 
             <Link
               href="/player"
-              className="block w-full py-3 px-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/50 text-center"
+              className="block w-full py-3 px-4 rounded-xl bg-[#FF3B5C] hover:bg-white text-[#0B0B0F] text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/50 text-center"
             >
               Return to Player Home
             </Link>
@@ -884,13 +884,13 @@ export default function PlayerGameConsolePage() {
         {/* MODAL: INTERACTIVE MINI-GAME MODAL */}
         {activePlayTask && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/90 backdrop-blur-md overflow-y-auto">
-            <div className="w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-3xl p-4 sm:p-6 space-y-4 shadow-2xl">
+            <div className="w-full max-w-lg bg-[#12121A]/60 backdrop-blur-[30px] border border-white/[0.08] rounded-3xl p-4 sm:p-6 space-y-4 shadow-2xl">
               <div className="flex items-center justify-between border-b border-zinc-850 pb-3">
                 <div>
                   <h3 className="text-sm sm:text-base font-bold text-white uppercase font-mono">
                     {activePlayTask.title}
                   </h3>
-                  <span className="text-[10px] font-mono text-cyan-400">
+                  <span className="text-[10px] font-mono text-[#00F0FF]">
                     +{activePlayTask.points} Points Objective
                   </span>
                 </div>
@@ -975,7 +975,7 @@ export default function PlayerGameConsolePage() {
                 />
               ) : (
                 /* Fallback for SYSTEM OVERRIDE */
-                <div className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-4 text-center">
+                <div className="p-4 rounded-2xl bg-black/50 border border-white/[0.08] space-y-4 text-center">
                   <div className="font-mono text-xs text-zinc-400">
                     Solve sequence override: <span className="text-white font-bold">2, 4, 8, 16, ?</span>
                   </div>
@@ -986,20 +986,20 @@ export default function PlayerGameConsolePage() {
                       value={puzzleAnswer}
                       onChange={(e) => setPuzzleAnswer(e.target.value.trim())}
                       placeholder="Enter solution (e.g. 32)"
-                      className="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 text-white font-mono text-center text-lg focus:outline-none focus:border-cyan-500"
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#12121A]/60 backdrop-blur-[30px] border border-white/[0.08] text-white font-mono text-center text-lg focus:outline-none focus:border-cyan-500"
                     />
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => setActivePlayTask(null)}
-                        className="flex-1 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-mono text-xs"
+                        className="flex-1 py-2.5 rounded-xl bg-white/[0.04] text-zinc-300 font-mono text-xs"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
                         disabled={actionBusy || !puzzleAnswer.trim()}
-                        className="flex-1 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs font-bold uppercase"
+                        className="flex-1 py-2.5 rounded-xl bg-[#00F0FF] hover:bg-white text-[#0B0B0F] text-white font-mono text-xs font-bold uppercase"
                       >
                         Submit
                       </button>
@@ -1014,7 +1014,7 @@ export default function PlayerGameConsolePage() {
         {/* MODAL: TASK OTP INPUT */}
         {otpTaskId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-2xl p-6 space-y-4 shadow-2xl">
+            <div className="w-full max-w-sm bg-[#12121A]/60 backdrop-blur-[30px] border border-white/[0.08] rounded-2xl p-6 space-y-4 shadow-2xl">
               <h3 className="text-base font-bold text-white uppercase font-mono">
                 Verify Task Completion
               </h3>
@@ -1031,7 +1031,7 @@ export default function PlayerGameConsolePage() {
                   value={otpValue}
                   onChange={(e) => setOtpValue(e.target.value.trim())}
                   placeholder="Enter OTP"
-                  className="w-full px-3 py-3 rounded-xl bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 font-mono text-center text-xl font-bold tracking-widest focus:outline-none focus:border-cyan-500"
+                  className="w-full px-3 py-3 rounded-xl bg-black/50 border border-white/[0.08] text-white placeholder-zinc-500 font-mono text-center text-xl font-bold tracking-widest focus:outline-none focus:border-cyan-500"
                 />
 
                 <div className="flex items-center gap-2">
@@ -1041,14 +1041,14 @@ export default function PlayerGameConsolePage() {
                       setOtpTaskId(null);
                       setOtpValue("");
                     }}
-                    className="flex-1 py-2.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-mono text-xs uppercase"
+                    className="flex-1 py-2.5 rounded-lg bg-black/50 hover:bg-white/[0.04] text-zinc-300 font-mono text-xs uppercase"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={actionBusy}
-                    className="flex-1 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs font-bold uppercase tracking-wider shadow-lg shadow-cyan-950/50"
+                    className="flex-1 py-2.5 rounded-lg bg-[#00F0FF] hover:bg-white text-[#0B0B0F] text-white font-mono text-xs font-bold uppercase tracking-wider shadow-lg shadow-cyan-950/50"
                   >
                     {actionBusy ? "Verifying..." : "Verify Task"}
                   </button>

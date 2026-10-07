@@ -82,7 +82,7 @@ export async function POST(request: Request) {
       create: {
         id: session.gameId,
         name: "NOTHING SUS ARENA",
-        adminSecret: "ARSH235",
+        adminSecret: "NOTHINGSUS123",
         spectatorSecret: "TV2026",
         roomCode,
         maxPlayers: data.maxPlayers,

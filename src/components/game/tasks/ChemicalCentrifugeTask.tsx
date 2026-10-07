@@ -78,7 +78,7 @@ export function ChemicalCentrifugeTask({ onSuccess, onCancel }: ChemicalCentrifu
   };
 
   return (
-    <div className="bg-[#080d16] text-[#e7eef8] rounded-2xl border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
+    <div className="bg-[#080d16] text-[#e7eef8] rounded-[2.5rem] border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#29374a] pb-3">
         <div>
@@ -109,7 +109,7 @@ export function ChemicalCentrifugeTask({ onSuccess, onCancel }: ChemicalCentrifu
       {/* Gauges */}
       <div className="grid grid-cols-2 gap-3">
         {/* Heat Gauge */}
-        <div className={`p-4 rounded-xl border space-y-2 ${isTempOptimal ? "border-emerald-500 bg-emerald-950/20" : "border-zinc-800 bg-[#070e18]"}`}>
+        <div className={`p-4 rounded-xl border space-y-2 ${isTempOptimal ? "border-emerald-500 bg-emerald-950/20" : "border-white/[0.08] bg-[#070e18]"}`}>
           <div className="flex justify-between items-center text-xs">
             <span className="text-zinc-400">CHAMBER TEMP</span>
             <span className={`font-bold ${isTempOptimal ? "text-emerald-400" : "text-amber-400"}`}>
@@ -124,13 +124,13 @@ export function ChemicalCentrifugeTask({ onSuccess, onCancel }: ChemicalCentrifu
             value={temp}
             disabled={isSpinning}
             onChange={(e) => setTemp(parseInt(e.target.value))}
-            className="w-full accent-purple-500 h-2 bg-zinc-800 rounded-lg cursor-pointer"
+            className="w-full accent-purple-500 h-2 bg-white/[0.04] rounded-lg cursor-pointer"
           />
           <div className="text-[10px] text-zinc-500 text-center">Target: 70°C – 80°C</div>
         </div>
 
         {/* Rotor RPM */}
-        <div className={`p-4 rounded-xl border space-y-2 ${isRpmOptimal ? "border-emerald-500 bg-emerald-950/20" : "border-zinc-800 bg-[#070e18]"}`}>
+        <div className={`p-4 rounded-xl border space-y-2 ${isRpmOptimal ? "border-emerald-500 bg-emerald-950/20" : "border-white/[0.08] bg-[#070e18]"}`}>
           <div className="flex justify-between items-center text-xs">
             <span className="text-zinc-400">ROTOR VELOCITY</span>
             <span className={`font-bold ${isRpmOptimal ? "text-emerald-400" : "text-amber-400"}`}>
@@ -145,7 +145,7 @@ export function ChemicalCentrifugeTask({ onSuccess, onCancel }: ChemicalCentrifu
             value={rpm}
             disabled={isSpinning}
             onChange={(e) => setRpm(parseInt(e.target.value))}
-            className="w-full accent-purple-500 h-2 bg-zinc-800 rounded-lg cursor-pointer"
+            className="w-full accent-purple-500 h-2 bg-white/[0.04] rounded-lg cursor-pointer"
           />
           <div className="text-[10px] text-zinc-500 text-center">Target: 5500 – 6500 RPM</div>
         </div>
@@ -158,7 +158,7 @@ export function ChemicalCentrifugeTask({ onSuccess, onCancel }: ChemicalCentrifu
             ? "border-purple-400 animate-spin text-purple-300 shadow-[0_0_20px_rgba(168,85,247,0.4)]"
             : isTempOptimal && isRpmOptimal
             ? "border-emerald-500 text-emerald-400"
-            : "border-zinc-700 text-zinc-600"
+            : "border-white/[0.08] text-zinc-600"
         }`}>
           <span className="text-2xl font-black">🧪</span>
         </div>
@@ -169,7 +169,7 @@ export function ChemicalCentrifugeTask({ onSuccess, onCancel }: ChemicalCentrifu
             <span>DENSITY PRECIPITATION</span>
             <span>{separationPct}%</span>
           </div>
-          <div className="w-full h-2 rounded-full bg-zinc-900 overflow-hidden border border-zinc-800">
+          <div className="w-full h-2 rounded-full bg-black/50 overflow-hidden border border-white/[0.08]">
             <div
               className="h-full bg-gradient-to-r from-purple-500 to-emerald-400 transition-all duration-150"
               style={{ width: `${separationPct}%` }}
@@ -193,7 +193,7 @@ export function ChemicalCentrifugeTask({ onSuccess, onCancel }: ChemicalCentrifu
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-700 transition-colors"
+          className="text-xs px-4 py-2 rounded-lg bg-black/50 hover:bg-white/[0.04] text-zinc-400 border border-white/[0.08] transition-colors"
         >
           Exit Console
         </button>

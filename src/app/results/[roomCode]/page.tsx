@@ -59,7 +59,7 @@ export default function ResultsPage({
 
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-8 space-y-8">
         <div className="text-center space-y-4 pt-6">
-          <span className="text-xs font-mono uppercase tracking-widest text-red-400 bg-red-950/60 border border-red-500/30 px-3 py-1 rounded">
+          <span className="text-xs font-mono uppercase tracking-widest text-[#FF3B5C] bg-[#FF3B5C]/10/60 border border-[#FF3B5C]/30 px-3 py-1 rounded">
             OFFICIAL MATCH DEBRIEF // ROOM {roomCode}
           </span>
           <h1 className="text-4xl sm:text-6xl font-black uppercase tracking-tight text-white">
@@ -71,8 +71,8 @@ export default function ResultsPage({
         </div>
 
         {/* Unmasked Roster */}
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-6 sm:p-8 space-y-6 shadow-2xl">
-          <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
+        <div className="rounded-[2.5rem] border border-white/[0.08] bg-[#12121A]/60 backdrop-blur-[30px]/80 p-6 sm:p-8 space-y-6 shadow-2xl">
+          <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
             <div>
               <h2 className="text-lg font-bold text-white uppercase font-mono tracking-wider">
                 Full Agent Manifest (Unmasked)
@@ -92,8 +92,8 @@ export default function ResultsPage({
                 key={p.id}
                 className={`p-3.5 rounded-xl border flex items-center justify-between text-xs transition-colors ${
                   p.role === "IMPOSTER"
-                    ? "bg-red-950/30 border-red-900/50"
-                    : "bg-zinc-900/60 border-zinc-800"
+                    ? "bg-[#FF3B5C]/10/30 border-red-900/50"
+                    : "bg-black/50/60 border-white/[0.08]"
                 }`}
               >
                 <div>
@@ -106,8 +106,8 @@ export default function ResultsPage({
                   <span
                     className={`inline-block px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-wider border ${
                       p.role === "IMPOSTER"
-                        ? "bg-red-950 text-red-400 border-red-500/40"
-                        : "bg-cyan-950 text-cyan-400 border-cyan-500/40"
+                        ? "bg-[#FF3B5C]/10 text-[#FF3B5C] border-[#FF3B5C]/30"
+                        : "bg-cyan-950 text-[#00F0FF] border-[#00F0FF]/30"
                     }`}
                   >
                     {p.role || "ENGINEER"}
@@ -125,13 +125,13 @@ export default function ResultsPage({
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
           <Link
             href="/join"
-            className="py-3 px-6 rounded-xl bg-red-600 hover:bg-red-500 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/40"
+            className="py-3 px-6 rounded-xl bg-[#FF3B5C] hover:bg-white text-[#0B0B0F] text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/40"
           >
             Join Next Match
           </Link>
           <Link
             href="/"
-            className="py-3 px-6 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 font-mono text-xs uppercase transition-colors"
+            className="py-3 px-6 rounded-xl bg-black/50 hover:bg-white/[0.04] border border-white/[0.08] text-zinc-300 font-mono text-xs uppercase transition-colors"
           >
             Event Main Page
           </Link>

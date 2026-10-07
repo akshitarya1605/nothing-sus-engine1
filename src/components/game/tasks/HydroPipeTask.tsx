@@ -91,11 +91,11 @@ export function HydroPipeTask({ onSuccess, onCancel }: HydroPipeTaskProps) {
   };
 
   return (
-    <div className="bg-[#080d16] text-[#e7eef8] rounded-2xl border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
+    <div className="bg-[#080d16] text-[#e7eef8] rounded-[2.5rem] border border-[#29374a] p-4 sm:p-6 space-y-5 font-mono shadow-2xl max-w-lg w-full select-none">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#29374a] pb-3">
         <div>
-          <span className="text-[10px] tracking-widest uppercase text-cyan-400 font-bold">
+          <span className="text-[10px] tracking-widest uppercase text-[#00F0FF] font-bold">
             HYDRO-PROPULSION MANIFOLD // HARD TASK
           </span>
           <h2 className="text-lg font-black uppercase text-white tracking-tight">
@@ -109,18 +109,18 @@ export function HydroPipeTask({ onSuccess, onCancel }: HydroPipeTaskProps) {
           >
             {sound ? "🔊" : "🔇"}
           </button>
-          <span className="text-xs px-2.5 py-1 rounded bg-[#1b293c] border border-[#29374a] text-cyan-400 font-bold">
+          <span className="text-xs px-2.5 py-1 rounded bg-[#1b293c] border border-[#29374a] text-[#00F0FF] font-bold">
             VALVE FLOW
           </span>
         </div>
       </div>
 
       <p className="text-xs text-[#8798b0] leading-relaxed">
-        Rotate hydraulic conduit tiles to route high-pressure coolant from Intake (<span className="text-cyan-400 font-bold">💧</span>) to Primary Core (<span className="text-emerald-400 font-bold">CORE</span>).
+        Rotate hydraulic conduit tiles to route high-pressure coolant from Intake (<span className="text-[#00F0FF] font-bold">💧</span>) to Primary Core (<span className="text-emerald-400 font-bold">CORE</span>).
       </p>
 
       {/* 3x3 Pipe Grid */}
-      <div className="bg-[#070e18] p-4 rounded-2xl border border-[#29374a] space-y-4">
+      <div className="bg-[#070e18] p-4 rounded-[2.5rem] border border-[#29374a] space-y-4">
         <div className="grid grid-cols-3 gap-2.5 max-w-[280px] mx-auto">
           {grid.map((cell, idx) => {
             const isStart = idx === 0;
@@ -135,7 +135,7 @@ export function HydroPipeTask({ onSuccess, onCancel }: HydroPipeTaskProps) {
                     ? "border-cyan-400 bg-cyan-950/40"
                     : isEnd
                     ? "border-emerald-400 bg-emerald-950/40"
-                    : "border-zinc-800 bg-[#0c1522] hover:border-zinc-600"
+                    : "border-white/[0.08] bg-[#0c1522] hover:border-zinc-600"
                 }`}
               >
                 {/* Visual Pipe Graphic */}
@@ -154,7 +154,7 @@ export function HydroPipeTask({ onSuccess, onCancel }: HydroPipeTaskProps) {
                 </div>
 
                 {isStart && (
-                  <span className="absolute top-1 left-1 text-[9px] font-bold text-cyan-300">
+                  <span className="absolute top-1 left-1 text-[9px] font-bold text-[#00F0FF]">
                     IN
                   </span>
                 )}
@@ -187,7 +187,7 @@ export function HydroPipeTask({ onSuccess, onCancel }: HydroPipeTaskProps) {
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs px-4 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border border-zinc-700 transition-colors"
+          className="text-xs px-4 py-2 rounded-lg bg-black/50 hover:bg-white/[0.04] text-zinc-400 border border-white/[0.08] transition-colors"
         >
           Exit Console
         </button>

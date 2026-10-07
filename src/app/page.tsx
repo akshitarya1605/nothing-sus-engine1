@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { IsaHeader } from "@/components/ui/IsaHeader";
+import { HostScript } from "@/components/ui/HostScript";
 import { User, ShieldAlert, KeyRound, ArrowRight } from "lucide-react";
 
 export default function UnifiedAuthPage() {
@@ -222,6 +223,9 @@ export default function UnifiedAuthPage() {
             )}
           </div>
         </div>
+
+        {/* --- Host Script / Public Instructions --- */}
+        <HostScript />
       </main>
     </div>
   );

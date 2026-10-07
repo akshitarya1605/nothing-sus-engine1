@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { IsaHeader } from "@/components/ui/IsaHeader";
+import { TasksTab } from "./tasks/TasksTab";
 import { QRCode } from "@/components/ui/QRCode";
 import { useGameRealtime } from "@/lib/realtime/useGameRealtime";
 
@@ -113,7 +114,7 @@ interface PeopleStats {
 }
 
 export default function ControlPage() {
-  const [activeTab, setActiveTab] = useState<"game" | "people">("game");
+  const [activeTab, setActiveTab] = useState<"game" | "people" | "tasks">("game");
   const [state, setState] = useState<AdminStateResponse | null>(null);
   const [presets, setPresets] = useState<Preset[]>([]);
   const [pendingAccounts, setPendingAccounts] = useState<PendingAccount[]>([]);
@@ -427,7 +428,7 @@ export default function ControlPage() {
 
         <main className="flex-1 flex items-center justify-center p-4">
           <div className="w-full max-w-sm rounded-3xl border border-white/[0.08] bg-[#12121A]/40 backdrop-blur-[20px] p-6 space-y-4 shadow-2xl text-center">
-            <span className="text-[10px] tracking-wider uppercase text-red-400 bg-red-950/60 border border-red-500/30 px-2 py-0.5 rounded">
+            <span className="text-[10px] tracking-wider uppercase text-[#FF3B5C] bg-[#FF3B5C]/10/60 border border-[#FF3B5C]/30 px-2 py-0.5 rounded">
               RESTRICTED ACCESS
             </span>
             <h1 className="text-xl font-bold text-white">Host Authentication</h1>
@@ -449,11 +450,11 @@ export default function ControlPage() {
                 value={passphrase}
                 onChange={(e) => setPassphrase(e.target.value)}
                 placeholder="Enter Host Key (e.g. NOTHINGSUS123)"
-                className="w-full px-3 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white text-xs font-bold uppercase tracking-wider focus:outline-none focus:border-red-500"
+                className="w-full px-3 py-2.5 rounded-xl bg-black/50 focus:bg-black focus:border-[#00F0FF]/50 border border-white/[0.08] text-white text-xs font-bold uppercase tracking-wider focus:outline-none focus:border-[#00F0FF]/50"
               />
               <button
                 type="submit"
-                className="w-full py-2.5 rounded-xl bg-[#FF3B5C] hover:bg-white text-black transition-all shadow-[0_0_15px_rgba(255,59,92,0.4)] text-white text-xs font-bold uppercase tracking-wider font-bold uppercase tracking-wider transition-colors"
+                className="w-full py-2.5 rounded-xl bg-[#00F0FF] hover:bg-cyan-400 text-black shadow-[0_0_15px_rgba(0,240,255,0.4)] text-xs font-black uppercase tracking-wider transition-all"
               >
                 Unlock Console
               </button>
@@ -493,7 +494,7 @@ export default function ControlPage() {
 
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Navigation Bar */}
-        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
           <div className="flex items-center gap-6">
             <span className="font-sans text-base font-black tracking-wider text-white">
               NOTHING SUS CONTROL
@@ -504,7 +505,7 @@ export default function ControlPage() {
                 onClick={() => setActiveTab("game")}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider font-bold uppercase tracking-wider transition-colors ${
                   activeTab === "game"
-                    ? "bg-zinc-800 text-white border border-zinc-700"
+                    ? "bg-white/[0.04] text-white border border-white/[0.08]"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
@@ -514,7 +515,7 @@ export default function ControlPage() {
                 onClick={() => setActiveTab("people")}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider font-bold uppercase tracking-wider transition-colors flex items-center gap-2 ${
                   activeTab === "people"
-                    ? "bg-zinc-800 text-white border border-zinc-700"
+                    ? "bg-white/[0.04] text-white border border-white/[0.08]"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
@@ -524,6 +525,16 @@ export default function ControlPage() {
                     {pendingAccounts.length}
                   </span>
                 )}
+              </button>
+              <button
+                onClick={() => setActiveTab("tasks")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider font-bold uppercase tracking-wider transition-colors ${
+                  activeTab === "tasks"
+                    ? "bg-white/[0.04] text-white border border-white/[0.08]"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                Tasks
               </button>
               <Link
                 href="/control/presets"
@@ -538,7 +549,7 @@ export default function ControlPage() {
             {/* Approvals Notification Button */}
             <button
               onClick={() => setShowApprovals(true)}
-              className="px-3.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-colors border border-zinc-700 text-xs font-sans font-bold transition-colors flex items-center gap-2"
+              className="px-3.5 py-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors border border-white/[0.08] text-xs font-sans font-bold transition-colors flex items-center gap-2"
             >
               <span>Approvals</span>
               {pendingAccounts.length > 0 ? (
@@ -555,10 +566,10 @@ export default function ControlPage() {
                 href={`/spectator/${roomCode}`}
                 target="_blank"
                 rel="noreferrer"
-                className="px-3.5 py-1.5 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 text-xs font-bold uppercase tracking-wider font-bold transition-colors flex items-center gap-1.5 shadow-lg shadow-red-950/40"
+                className="px-3.5 py-1.5 rounded-xl bg-[#FF3B5C]/10 hover:bg-red-900 border border-[#FF3B5C]/30 text-red-300 text-xs font-bold uppercase tracking-wider font-bold transition-colors flex items-center gap-1.5 shadow-lg shadow-red-950/40"
               >
                 <span>Arena TV</span>
-                <span className="text-red-400">↗</span>
+                <span className="text-[#FF3B5C]">↗</span>
               </a>
             )}
           </div>
@@ -569,7 +580,7 @@ export default function ControlPage() {
             className={`p-3 rounded-xl border text-xs font-sans ${
               toast.kind === "ok"
                 ? "bg-[#B6FF3B]/10/80 border-[#B6FF3B]/20 text-emerald-200"
-                : "bg-red-950/80 border-red-500/40 text-red-200"
+                : "bg-[#FF3B5C]/10 border-[#FF3B5C]/30 text-red-200"
             }`}
           >
             {toast.msg}
@@ -586,7 +597,7 @@ export default function ControlPage() {
             {/* ------------------------------------------------------------- */}
             {isNoGame && (
               <div className="max-w-xl mx-auto rounded-3xl border border-white/[0.08] bg-[#12121A]/40 backdrop-blur-[20px] p-6 sm:p-8 space-y-6 shadow-2xl">
-                <div className="border-b border-zinc-800 pb-4">
+                <div className="border-b border-white/[0.08] pb-4">
                   <span className="text-[10px] tracking-wider uppercase text-zinc-500">
                     HOST WORKSPACE
                   </span>
@@ -606,7 +617,7 @@ export default function ControlPage() {
                     <select
                       value={selectedPresetId}
                       onChange={(e) => setSelectedPresetId(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-2xl bg-zinc-900 border border-white/[0.08] text-white text-xs font-bold uppercase tracking-wider focus:outline-none focus:border-red-500"
+                      className="w-full px-3 py-2.5 rounded-2xl bg-black/50 focus:bg-black focus:border-[#00F0FF]/50 border border-white/[0.08] text-white text-xs font-bold uppercase tracking-wider focus:outline-none focus:border-[#00F0FF]/50"
                     >
                       <option value="">-- Standard Configuration --</option>
                       {presets.map((p) => (
@@ -628,7 +639,7 @@ export default function ControlPage() {
                         max={100}
                         value={maxPlayers}
                         onChange={(e) => setMaxPlayers(parseInt(e.target.value) || 30)}
-                        className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/[0.08] text-white text-xs font-bold uppercase tracking-wider text-center"
+                        className="w-full px-3 py-2 rounded-xl bg-black/50 focus:bg-black focus:border-[#00F0FF]/50 border border-white/[0.08] text-white text-xs font-bold uppercase tracking-wider text-center"
                       />
                     </div>
                     <div>
@@ -641,7 +652,7 @@ export default function ControlPage() {
                         max={10}
                         value={imposterCount}
                         onChange={(e) => setImposterCount(parseInt(e.target.value) || 3)}
-                        className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/[0.08] text-white text-xs font-bold uppercase tracking-wider text-center"
+                        className="w-full px-3 py-2 rounded-xl bg-black/50 focus:bg-black focus:border-[#00F0FF]/50 border border-white/[0.08] text-white text-xs font-bold uppercase tracking-wider text-center"
                       />
                     </div>
                     <div>
@@ -654,7 +665,7 @@ export default function ControlPage() {
                         max={300}
                         value={cooldown}
                         onChange={(e) => setCooldown(parseInt(e.target.value) || 60)}
-                        className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/[0.08] text-white text-xs font-bold uppercase tracking-wider text-center"
+                        className="w-full px-3 py-2 rounded-xl bg-black/50 focus:bg-black focus:border-[#00F0FF]/50 border border-white/[0.08] text-white text-xs font-bold uppercase tracking-wider text-center"
                       />
                     </div>
                   </div>
@@ -663,7 +674,7 @@ export default function ControlPage() {
                     <button
                       type="submit"
                       disabled={actionBusy === "create"}
-                      className="w-full py-3.5 px-4 rounded-2xl bg-[#FF3B5C] hover:bg-white text-black transition-all shadow-[0_0_15px_rgba(255,59,92,0.4)] disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/50 flex items-center justify-center gap-2"
+                      className="w-full py-3.5 px-4 rounded-2xl w-full py-4 px-4 rounded-xl bg-[#FF3B5C] hover:bg-white disabled:opacity-50 text-[#0B0B0F] text-sm font-black uppercase tracking-widest transition-all shadow-[0_0_0_1px_rgba(255,59,92,0.4),0_10px_40px_-10px_rgba(255,59,92,0.65)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.6),0_14px_50px_-10px_rgba(255,59,92,0.8)] flex items-center justify-center gap-2 group"
                     >
                       {actionBusy === "create" ? "Generating Room..." : "Create Game Room"}
                     </button>
@@ -677,13 +688,13 @@ export default function ControlPage() {
             {/* ------------------------------------------------------------- */}
             {isLobby && (
               <div className="space-y-6">
-                <div className="rounded-3xl border border-red-500/30 bg-[#12121A]/40 backdrop-blur-[20px] p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl">
+                <div className="rounded-3xl border border-[#FF3B5C]/30 bg-[#12121A]/40 backdrop-blur-[20px] p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl">
                   <div className="space-y-2">
                     <span className="text-[10px] tracking-wider uppercase text-zinc-400 block">
                       ACTIVE WAITING LOBBY
                     </span>
                     <div className="flex items-center gap-4">
-                      <div className="font-sans text-5xl sm:text-6xl font-black text-red-500 tracking-widest drop-shadow-[0_0_25px_rgba(239,68,68,0.4)]">
+                      <div className="font-sans text-5xl sm:text-6xl font-black text-[#FF3B5C] tracking-widest drop-shadow-[0_0_25px_rgba(239,68,68,0.4)]">
                         {roomCode}
                       </div>
                       <button
@@ -691,7 +702,7 @@ export default function ControlPage() {
                           if (roomCode) navigator.clipboard.writeText(roomCode);
                           notify("Room code copied to clipboard!");
                         }}
-                        className="px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] transition-colors border border-zinc-700 text-xs font-sans text-zinc-300 transition-colors"
+                        className="px-2.5 py-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors border border-white/[0.08] text-xs font-sans text-zinc-300 transition-colors"
                       >
                         Copy
                       </button>
@@ -708,7 +719,7 @@ export default function ControlPage() {
                     <button
                       onClick={handleStartGame}
                       disabled={actionBusy === "start" || participants.length === 0}
-                      className="py-3 px-6 rounded-2xl bg-[#FF3B5C] hover:bg-white text-black transition-all shadow-[0_0_15px_rgba(255,59,92,0.4)] disabled:opacity-40 text-white text-xs font-bold uppercase tracking-wider font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-950/50"
+                      className="py-3 px-6 rounded-2xl py-3 px-6 rounded-xl bg-[#FF3B5C] hover:bg-white text-[#0B0B0F] text-xs font-black uppercase tracking-widest transition-all shadow-[0_0_0_1px_rgba(255,59,92,0.4),0_10px_40px_-10px_rgba(255,59,92,0.65)]"
                     >
                       {actionBusy === "start" ? "Launching Match..." : `Start Game (${participants.length} Players)`}
                     </button>
@@ -716,7 +727,7 @@ export default function ControlPage() {
                       href={`/spectator/${roomCode}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="py-3 px-5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] transition-colors border border-red-500/40 text-red-300 text-xs font-bold uppercase tracking-wider font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5"
+                      className="py-3 px-5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors border border-[#FF3B5C]/30 text-red-300 text-xs font-bold uppercase tracking-wider font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5"
                     >
                       <span>Open Spectator</span>
                       <span>↗</span>
@@ -724,7 +735,7 @@ export default function ControlPage() {
                     <button
                       onClick={handleCancelRoom}
                       disabled={actionBusy === "cancel"}
-                      className="py-3 px-4 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] transition-colors text-zinc-400 hover:text-red-400 border border-white/[0.08] text-xs font-bold uppercase tracking-wider uppercase transition-colors"
+                      className="py-3 px-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-zinc-400 hover:text-[#FF3B5C] border border-white/[0.08] text-xs font-bold uppercase tracking-wider uppercase transition-colors"
                     >
                       Cancel Room
                     </button>
@@ -740,7 +751,7 @@ export default function ControlPage() {
                     <div className="text-xs font-sans text-zinc-400 space-y-1.5">
                       <p>1. Players open: <span className="text-white font-bold">{typeof window !== "undefined" ? window.location.host : ""}/join</span></p>
                       <p>2. Log in using their <span className="text-[#00F0FF] font-bold">College Registration ID</span> & password</p>
-                      <p>3. Enter active Room Code: <span className="text-red-400 font-bold">{roomCode}</span></p>
+                      <p>3. Enter active Room Code: <span className="text-[#FF3B5C] font-bold">{roomCode}</span></p>
                       <p className="text-[11px] text-zinc-500 pt-1">
                         Only ISA-approved accounts can enter the game. Unapproved students will see a pending banner.
                       </p>
@@ -754,10 +765,10 @@ export default function ControlPage() {
 
                 {/* Live Joined Players Table */}
                 <div className="rounded-3xl border border-white/[0.08] bg-[#12121A]/40 backdrop-blur-[20px] p-6 space-y-4 shadow-xl">
-                  <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                  <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
                     <h3 className="text-sm font-bold uppercase tracking-wider font-bold uppercase text-white tracking-wider flex items-center gap-2">
                       <span>Connected Players Manifest</span>
-                      <span className="px-2 py-0.5 rounded bg-zinc-800 text-xs text-red-400 font-bold">
+                      <span className="px-2 py-0.5 rounded bg-white/[0.04] text-xs text-[#FF3B5C] font-bold">
                         {participants.length} / {game?.maxPlayers || 30}
                       </span>
                     </h3>
@@ -778,7 +789,7 @@ export default function ControlPage() {
                       {participants.map((p) => (
                         <div
                           key={p.id}
-                          className="p-3.5 rounded-2xl border border-white/[0.08] bg-zinc-900/60 flex items-center justify-between text-xs"
+                          className="p-3.5 rounded-[2.5rem] border border-white/[0.08] bg-black/50 focus:bg-black focus:border-[#00F0FF]/50/60 flex items-center justify-between text-xs"
                         >
                           <div className="space-y-0.5 truncate pr-2">
                             <div className="flex items-center gap-2">
@@ -799,7 +810,7 @@ export default function ControlPage() {
                             </span>
                             <button
                               onClick={() => handlePeopleAction("kick_game", undefined, p.id)}
-                              className="text-[10px] text-zinc-600 hover:text-red-400 font-sans px-1"
+                              className="text-[10px] text-zinc-600 hover:text-[#FF3B5C] font-sans px-1"
                               title="Remove from room"
                             >
                               ✕
@@ -837,7 +848,7 @@ export default function ControlPage() {
                         <span>•</span>
                         <span className="text-zinc-500">{eliminatedCount} Eliminated</span>
                         <span>•</span>
-                        <span className="text-red-400 font-bold">{impostorCount} Impostors</span>
+                        <span className="text-[#FF3B5C] font-bold">{impostorCount} Impostors</span>
                       </div>
                     </div>
                   </div>
@@ -847,7 +858,7 @@ export default function ControlPage() {
                     <button
                       onClick={handleCallEmergencyMeeting}
                       disabled={actionBusy === "meeting"}
-                      className="px-4 py-2.5 rounded-2xl bg-[#FF3B5C] hover:bg-white text-black transition-all shadow-[0_0_15px_rgba(255,59,92,0.4)] text-white text-xs font-bold uppercase tracking-wider font-bold uppercase tracking-wider shadow-lg shadow-red-950/50"
+                      className="px-4 py-2.5 rounded-2xl bg-[#FF3B5C] hover:bg-white text-black transition-all shadow-[0_0_15px_rgba(255,59,92,0.4)] text-xs font-black uppercase tracking-wider shadow-lg shadow-red-950/50"
                     >
                       Call Meeting
                     </button>
@@ -860,19 +871,19 @@ export default function ControlPage() {
                     </button>
                     <button
                       onClick={() => handleDeclareWinner("ENGINEERS")}
-                      className="px-3 py-2.5 rounded-2xl bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 text-xs font-bold uppercase tracking-wider"
+                      className="px-3 py-2.5 rounded-2xl bg-cyan-950 hover:bg-cyan-900 border border-[#00F0FF]/30 text-[#00F0FF] text-xs font-bold uppercase tracking-wider"
                     >
                       Engineers Win
                     </button>
                     <button
                       onClick={() => handleDeclareWinner("IMPOSTERS")}
-                      className="px-3 py-2.5 rounded-2xl bg-red-950 hover:bg-red-900 border border-red-500/40 text-red-300 text-xs font-bold uppercase tracking-wider"
+                      className="px-3 py-2.5 rounded-2xl bg-[#FF3B5C]/10 hover:bg-red-900 border border-[#FF3B5C]/30 text-red-300 text-xs font-bold uppercase tracking-wider"
                     >
                       Impostors Win
                     </button>
                     <button
                       onClick={handleCancelRoom}
-                      className="px-3 py-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] transition-colors text-zinc-500 hover:text-red-400 border border-white/[0.08] text-xs font-bold uppercase tracking-wider"
+                      className="px-3 py-2.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-zinc-500 hover:text-[#FF3B5C] border border-white/[0.08] text-xs font-bold uppercase tracking-wider"
                     >
                       End Match
                     </button>
@@ -890,7 +901,7 @@ export default function ControlPage() {
                           {state?.taskProgress?.percentage || 0}%
                         </span>
                       </div>
-                      <div className="w-full bg-zinc-900 h-3.5 rounded-full overflow-hidden border border-white/[0.08]">
+                      <div className="w-full bg-black/50 focus:bg-black focus:border-[#00F0FF]/50 h-3.5 rounded-full overflow-hidden border border-white/[0.08]">
                         <div
                           className="bg-emerald-500 h-full rounded-full transition-all duration-500"
                           style={{ width: `${state?.taskProgress?.percentage || 0}%` }}
@@ -907,12 +918,12 @@ export default function ControlPage() {
                         {participants.map((p) => (
                           <div
                             key={p.id}
-                            className={`p-3 rounded-2xl border text-xs font-sans flex items-center justify-between ${
+                            className={`p-3 rounded-[2.5rem] border text-xs font-sans flex items-center justify-between ${
                               p.status === "ELIMINATED"
                                 ? "bg-[#12121A]/40 backdrop-blur-[20px] border-zinc-900 text-zinc-600 line-through opacity-50"
                                 : p.role === "IMPOSTER"
-                                ? "bg-red-950/30 border-red-900 text-red-200"
-                                : "bg-zinc-900/60 border-zinc-800 text-white"
+                                ? "bg-[#FF3B5C]/10/30 border-red-900 text-red-200"
+                                : "bg-black/50 focus:bg-black focus:border-[#00F0FF]/50/60 border-white/[0.08] text-white"
                             }`}
                           >
                             <div className="truncate pr-2">
@@ -942,7 +953,7 @@ export default function ControlPage() {
                         state.recentAuditLog.map((log) => (
                           <div
                             key={log.id}
-                            className="p-2 rounded-xl bg-zinc-900/60 border border-white/[0.08] flex items-center justify-between text-[11px]"
+                            className="p-2 rounded-xl bg-black/50 focus:bg-black focus:border-[#00F0FF]/50/60 border border-white/[0.08] flex items-center justify-between text-[11px]"
                           >
                             <span className="text-zinc-300">{log.action}</span>
                             <span className="text-zinc-600 text-[9px]">
@@ -965,7 +976,7 @@ export default function ControlPage() {
         {activeTab === "people" && (
           <div className="space-y-6">
             <div className="rounded-3xl border border-white/[0.08] bg-[#12121A]/40 backdrop-blur-[20px] p-6 space-y-4 shadow-xl">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
                 <div>
                   <h2 className="text-xl font-bold uppercase text-white font-sans tracking-wider">
                     Student Accounts & Registry
@@ -979,7 +990,7 @@ export default function ControlPage() {
                   <button
                     onClick={handleApproveAllAccounts}
                     disabled={actionBusy === "approve-all"}
-                    className="px-4 py-2 rounded-2xl bg-[#B6FF3B] hover:bg-white text-black transition-all shadow-[0_0_15px_rgba(182,255,59,0.4)] text-white text-xs font-bold uppercase tracking-wider font-bold uppercase tracking-wider transition-colors shadow-lg shadow-emerald-950/40"
+                    className="px-4 py-2 rounded-2xl bg-[#00F0FF] hover:bg-white text-[#0B0B0F] transition-all shadow-[0_0_15px_rgba(0,240,255,0.4)] text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-950/40"
                   >
                     Approve All Pending ({peopleStats.pendingCount})
                   </button>
@@ -994,7 +1005,7 @@ export default function ControlPage() {
                     value={peopleSearch}
                     onChange={(e) => setPeopleSearch(e.target.value)}
                     placeholder="Search by student name or college Reg ID..."
-                    className="w-full px-3.5 py-2.5 rounded-2xl bg-zinc-900 border border-white/[0.08] text-white text-xs font-bold uppercase tracking-wider placeholder:text-zinc-600 focus:outline-none focus:border-red-500"
+                    className="w-full px-3.5 py-2.5 rounded-2xl bg-black/50 focus:bg-black focus:border-[#00F0FF]/50 border border-white/[0.08] text-white text-xs font-bold uppercase tracking-wider placeholder:text-zinc-600 focus:outline-none focus:border-[#00F0FF]/50"
                   />
                 </div>
 
@@ -1012,8 +1023,8 @@ export default function ControlPage() {
                       onClick={() => setPeopleFilter(f.id)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
                         peopleFilter === f.id
-                          ? "bg-red-600 text-white font-bold"
-                          : "bg-white/[0.04] hover:bg-white/[0.08] transition-colors text-zinc-400 border border-white/[0.08]"
+                          ? "bg-[#FF3B5C] text-[#0B0B0F] font-black shadow-[0_0_0_1px_rgba(255,59,92,0.4)]"
+                          : "bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-zinc-400 border border-white/[0.08]"
                       }`}
                     >
                       <span>{f.label}</span>
@@ -1041,7 +1052,7 @@ export default function ControlPage() {
                 ) : (
                   <table className="w-full text-left text-xs font-sans">
                     <thead>
-                      <tr className="border-b border-zinc-800 text-zinc-500 text-[10px] uppercase tracking-wider">
+                      <tr className="border-b border-white/[0.08] text-zinc-500 text-[10px] uppercase tracking-wider">
                         <th className="pb-3 font-semibold">Student Name</th>
                         <th className="pb-3 font-semibold">College Reg ID</th>
                         <th className="pb-3 font-semibold">Account Status</th>
@@ -1053,7 +1064,7 @@ export default function ControlPage() {
                       {people.map((person) => {
                         const inGame = person.activeParticipation;
                         return (
-                          <tr key={person.id} className="hover:bg-zinc-900/40 transition-colors">
+                          <tr key={person.id} className="hover:bg-black/50 focus:bg-black focus:border-[#00F0FF]/50/40 transition-colors">
                             <td className="py-3.5 pr-4">
                               <span className="font-bold text-white">{person.fullName}</span>
                               <div className="text-[10px] text-zinc-500">
@@ -1070,7 +1081,7 @@ export default function ControlPage() {
                                     ? "bg-[#B6FF3B]/10/70 text-[#B6FF3B] border border-emerald-500/30"
                                     : person.approvalStatus === "PENDING"
                                     ? "bg-amber-950/70 text-amber-300 border border-amber-500/30 animate-pulse"
-                                    : "bg-red-950/70 text-red-400 border border-red-500/30"
+                                    : "bg-[#FF3B5C]/10/70 text-[#FF3B5C] border border-[#FF3B5C]/30"
                                 }`}
                               >
                                 {person.approvalStatus}
@@ -1080,12 +1091,12 @@ export default function ControlPage() {
                               {inGame ? (
                                 <div className="space-y-0.5">
                                   <div className="flex items-center gap-1.5">
-                                    <span className="font-bold text-red-400">{inGame.roomCode}</span>
+                                    <span className="font-bold text-[#FF3B5C]">{inGame.roomCode}</span>
                                     <span className="text-yellow-400 font-bold">
                                       #{(inGame as { badge?: string | null }).badge || String(inGame.playerNumber).padStart(2, "0")}
                                     </span>
                                   </div>
-                                  <span className="text-[9px] uppercase px-1.5 py-0.2 bg-zinc-800 text-zinc-400 rounded">
+                                  <span className="text-[9px] uppercase px-1.5 py-0.2 bg-white/[0.04] text-zinc-400 rounded">
                                     {inGame.status}
                                   </span>
                                 </div>
@@ -1119,7 +1130,7 @@ export default function ControlPage() {
                                     <button
                                       onClick={() => handlePeopleAction("add_to_game", person.id)}
                                       disabled={actionBusy === `add-${person.id}`}
-                                      className="px-2 py-1 rounded bg-red-950/80 border border-red-500/40 text-red-300 text-[11px] font-bold hover:bg-red-900 transition-colors"
+                                      className="px-2 py-1 rounded bg-[#FF3B5C]/10 border border-[#FF3B5C]/30 text-red-300 text-[11px] font-bold hover:bg-red-900 transition-colors"
                                       title="Add player to active room midgame"
                                     >
                                       + Add to Game
@@ -1128,7 +1139,7 @@ export default function ControlPage() {
                                   <button
                                     onClick={() => handlePeopleAction("reject", person.id)}
                                     disabled={actionBusy === `reject-${person.id}`}
-                                    className="px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] transition-colors border border-zinc-700 text-zinc-400 text-[11px] transition-colors"
+                                    className="px-2 py-1 rounded bg-white/[0.03] hover:bg-white/[0.06] transition-colors border border-white/[0.08] text-zinc-400 text-[11px] transition-colors"
                                     title="Revoke approval"
                                   >
                                     Revoke
@@ -1151,7 +1162,7 @@ export default function ControlPage() {
                                   onClick={() =>
                                     handlePeopleAction("kick_game", undefined, inGame.participantId)
                                   }
-                                  className="px-2 py-1 rounded bg-red-950/80 border border-red-500/40 text-red-300 text-[11px] transition-colors"
+                                  className="px-2 py-1 rounded bg-[#FF3B5C]/10 border border-[#FF3B5C]/30 text-red-300 text-[11px] transition-colors"
                                   title="Remove player from active room"
                                 >
                                   Kick
@@ -1164,7 +1175,7 @@ export default function ControlPage() {
                                     handlePeopleAction("delete_account", person.id);
                                   }
                                 }}
-                                className="px-1.5 py-1 text-zinc-600 hover:text-red-400 text-[11px] transition-colors"
+                                className="px-1.5 py-1 text-zinc-600 hover:text-[#FF3B5C] text-[11px] transition-colors"
                                 title="Delete account record"
                               >
                                 ✕
@@ -1187,7 +1198,7 @@ export default function ControlPage() {
         {showApprovals && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div className="w-full max-w-2xl bg-[#12121A]/40 backdrop-blur-[20px] border border-white/[0.08] rounded-3xl p-6 sm:p-8 space-y-5 shadow-2xl max-h-[85vh] overflow-y-auto">
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
+              <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
                 <div>
                   <h2 className="text-lg font-bold text-white uppercase font-sans tracking-wider">
                     Student Account Approvals
@@ -1201,7 +1212,7 @@ export default function ControlPage() {
                     <button
                       onClick={handleApproveAllAccounts}
                       disabled={actionBusy === "approve-all"}
-                      className="px-3 py-1.5 rounded-xl bg-[#B6FF3B] hover:bg-white text-black transition-all shadow-[0_0_15px_rgba(182,255,59,0.4)] text-white text-xs font-bold uppercase tracking-wider font-bold uppercase transition-colors"
+                      className="px-3 py-1.5 rounded-xl bg-[#00F0FF] hover:bg-white text-[#0B0B0F] transition-all shadow-[0_0_15px_rgba(0,240,255,0.4)] text-xs font-black uppercase tracking-wider"
                     >
                       Approve All ({pendingAccounts.length})
                     </button>
@@ -1224,7 +1235,7 @@ export default function ControlPage() {
                   {pendingAccounts.map((acc) => (
                     <div
                       key={acc.id}
-                      className="p-3.5 rounded-2xl border border-white/[0.08] bg-zinc-900/60 flex items-center justify-between text-xs"
+                      className="p-3.5 rounded-[2.5rem] border border-white/[0.08] bg-black/50 focus:bg-black focus:border-[#00F0FF]/50/60 flex items-center justify-between text-xs"
                     >
                       <div>
                         <div className="font-bold text-white text-sm">{acc.fullName}</div>
@@ -1237,7 +1248,7 @@ export default function ControlPage() {
                         <button
                           onClick={() => handleApproveAccount(acc.id, "approve")}
                           disabled={actionBusy === `acc-${acc.id}`}
-                          className="px-3 py-1.5 rounded-xl bg-[#B6FF3B] hover:bg-white text-black transition-all shadow-[0_0_15px_rgba(182,255,59,0.4)] text-white text-xs font-bold uppercase tracking-wider font-bold uppercase transition-colors"
+                          className="px-3 py-1.5 rounded-xl bg-[#00F0FF] hover:bg-white text-[#0B0B0F] transition-all shadow-[0_0_15px_rgba(0,240,255,0.4)] text-xs font-black uppercase tracking-wider"
                         >
                           Approve
                         </button>
@@ -1254,6 +1265,15 @@ export default function ControlPage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* TAB 3: TASKS                                                  */}
+        {/* ============================================================= */}
+        {activeTab === "tasks" && (
+          <div className="pt-2">
+            <TasksTab gameStatus={state?.game?.status ?? "SETUP"} />
           </div>
         )}
       </main>
