@@ -418,7 +418,13 @@ export default function ControlPage() {
   if (denied) {
     return (
       <div className="min-h-screen bg-black text-white font-sans flex flex-col selection:bg-red-500/30">
-        <IsaHeader />
+        
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute -left-1/4 -top-1/4 h-[800px] w-[800px] rounded-full bg-[#00F0FF]/10 blur-[120px]" />
+        <div className="absolute -right-1/4 top-1/4 h-[600px] w-[600px] rounded-full bg-[#FF3B5C]/10 blur-[120px]" />
+      </div>
+      <IsaHeader />
+
         <main className="flex-1 flex items-center justify-center p-4">
           <div className="w-full max-w-sm rounded-3xl border border-white/[0.08] bg-[#12121A]/40 backdrop-blur-[20px] p-6 space-y-4 shadow-2xl text-center">
             <span className="text-[10px] tracking-wider uppercase text-red-400 bg-red-950/60 border border-red-500/30 px-2 py-0.5 rounded">
@@ -442,7 +448,7 @@ export default function ControlPage() {
                 required
                 value={passphrase}
                 onChange={(e) => setPassphrase(e.target.value)}
-                placeholder="Enter Host Key (e.g. ARSH235)"
+                placeholder="Enter Host Key (e.g. NOTHINGSUS123)"
                 className="w-full px-3 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white text-xs font-bold uppercase tracking-wider focus:outline-none focus:border-red-500"
               />
               <button
@@ -477,7 +483,13 @@ export default function ControlPage() {
 
   return (
     <div className="min-h-screen bg-black text-white font-sans flex flex-col selection:bg-red-500/30">
+      
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute -left-1/4 -top-1/4 h-[800px] w-[800px] rounded-full bg-[#00F0FF]/10 blur-[120px]" />
+        <div className="absolute -right-1/4 top-1/4 h-[600px] w-[600px] rounded-full bg-[#FF3B5C]/10 blur-[120px]" />
+      </div>
       <IsaHeader />
+
 
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Navigation Bar */}
